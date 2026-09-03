@@ -1,0 +1,31 @@
+{
+  "name": "memorial-day-golf-carts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Memorial Day Golf Carts — the Memorial Day Golf Cart Sales Event. Static site with a build-time snapshot of the live DMS inventory feed.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "dev": "node script/dev.ts",
+    "fetch-data": "node script/fetch-data.ts",
+    "fetch-data:fixture": "node script/fetch-data.ts --fixture",
+    "generate-seo": "node script/generate-seo.ts",
+    "optimize-assets": "node script/optimize-assets.ts",
+    "prerender": "node script/prerender.ts",
+    "build": "npm run fetch-data && npm run generate-seo && npm run optimize-assets && vite build && npm run prerender",
+    "build:site": "npm run generate-seo && npm run optimize-assets && vite build && npm run prerender",
+    "preview": "node script/serve.ts",
+    "test": "node --test tests/*.test.ts",
+    "budget": "node script/budget.ts",
+    "verify": "node script/verify.ts"
+  },
+  "devDependencies": {
+    "lighthouse": "^13.4.1",
+    "playwright": "^1.56.1",
+    "sharp": "^0.35.4",
+    "svgo": "^4.0.0",
+    "vite": "^7.0.0"
+  }
+}

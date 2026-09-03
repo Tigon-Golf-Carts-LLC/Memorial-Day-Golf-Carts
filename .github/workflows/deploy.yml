@@ -1,0 +1,109 @@
+name: Deploy to GitHub Pages
+
+# Triggers:
+#   push to main        — deploy whatever was merged
+#   workflow_dispatch   — deploy or refresh inventory on demand
+#   schedule            — refresh the inventory snapshot from the live DMS
+#
+# Inventory is frozen into the build, so the cron is what keeps it current.
+# Every 6 hours means a cart that sells is off the site within 6 hours at worst.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      require_live:
+        description: "Fail the build if the DMS is unreachable (no stale fallback)"
+        type: boolean
+        default: false
+  schedule:
+    # 00:00, 06:00, 12:00, 18:00 UTC.
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. `cancel-in-progress: false` so a scheduled refresh
+# already uploading is not killed by a push — both should land.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # The bare custom domain. Change both of these to move the site.
+  SITE_DOMAIN: memorialdaygolfcarts.com
+  # "/" for a custom domain or <user>.github.io.
+  # "/<repo-name>/" for a project site, e.g. "/Memorial-Day-Golf-Carts/".
+  BASE_PATH: "/"
+  # Node 22: script/*.ts run through Node's native type stripping, so there is
+  # no separate TypeScript compile step. Node 20 cannot do this.
+  NODE_VERSION: "22"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Optimized cart photography is derived, not committed. Caching it means a
+      # scheduled refresh only encodes photos for carts that are actually new,
+      # which takes the image step from ~10 minutes to well under one.
+      - name: Restore optimized image cache
+        uses: actions/cache@v4
+        with:
+          path: public/images/carts
+          key: cart-images-${{ hashFiles('src/data/snapshot.json') }}
+          restore-keys: |
+            cart-images-
+
+      - name: Fetch inventory from the DMS
+        run: npm run fetch-data ${{ inputs.require_live && '-- --require-live' || '' }}
+
+      - name: Generate SEO files
+        run: npm run generate-seo
+
+      - name: Optimize assets
+        run: npm run optimize-assets
+
+      - name: Build
+        run: npx vite build
+
+      - name: Prerender every route
+        run: npm run prerender
+
+      - name: Check the performance budget
+        run: npm run budget
+
+      - name: Verify the build
+        run: npm run verify
+
+      - name: Run the filter tests
+        run: npm test
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

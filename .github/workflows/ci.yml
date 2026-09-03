@@ -1,0 +1,44 @@
+name: CI
+
+# Runs on every pull request and on pushes to branches other than main.
+# Builds from the committed snapshot with no network fetch, so a PR is not
+# gated on the DMS being reachable.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+env:
+  SITE_DOMAIN: memorialdaygolfcarts.com
+  BASE_PATH: "/"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+
+      - name: Filter tests
+        run: npm test
+
+      # `build:site` skips the network fetch and reuses the committed snapshot.
+      # Cart photos are skipped: CI is checking the build, not re-encoding 969
+      # images, and the manifest degrades to remote originals when they are
+      # absent.
+      - name: Build from the committed snapshot
+        run: |
+          npm run generate-seo
+          node script/optimize-assets.ts --skip-carts
+          npx vite build
+          npm run prerender
+
+      - name: Verify the build
+        run: npm run verify

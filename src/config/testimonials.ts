@@ -1,0 +1,86 @@
+/**
+ * Customer testimonials.
+ *
+ * Authored locally: the DMS has no testimonials endpoint. They are snapshotted
+ * by script/fetch-data.ts alongside the inventory so every dataset the frontend
+ * reads has the same shape and the same `updatedAt`.
+ *
+ * `location` matches a store slug in src/config/locations.ts so a testimonial
+ * can be surfaced on the relevant location page.
+ */
+
+export interface Testimonial {
+  name: string;
+  location: string;
+  city: string;
+  stateCode: string;
+  rating: number;
+  date: string;
+  body: string;
+  cart: string;
+}
+
+export const testimonials: Testimonial[] = [
+  {
+    name: "Dana R.",
+    location: "ocean-view",
+    city: "Ocean View",
+    stateCode: "NJ",
+    rating: 5,
+    date: "2026-05-27",
+    body: "Drove down from Sea Isle on the Saturday of the Memorial Day event and left with a lifted six-passenger. The battery year was printed right on the listing, which is why I called this dealer first instead of the three closer to me.",
+    cart: "Denago Rover XL6",
+  },
+  {
+    name: "Marcus T.",
+    location: "raleigh",
+    city: "Raleigh",
+    stateCode: "NC",
+    rating: 5,
+    date: "2026-05-24",
+    body: "Bought two street-legal carts for a rental property. 0% for 48 months made it an easy decision, and both were titled and tagged before I picked them up.",
+    cart: "Club Car Tempo",
+  },
+  {
+    name: "Ellen K.",
+    location: "lecanto",
+    city: "Lecanto",
+    stateCode: "FL",
+    rating: 5,
+    date: "2026-05-21",
+    body: "I wanted lithium and nothing else, and they had eleven of them on the floor. The salesman talked me out of a bigger pack than I needed rather than into one.",
+    cart: "Denago Nomad XL",
+  },
+  {
+    name: "Ray P.",
+    location: "hatfield",
+    city: "Hatfield",
+    stateCode: "PA",
+    rating: 5,
+    date: "2026-05-19",
+    body: "Traded a fifteen-year-old gas cart against a used electric. Trade value stacked on top of the event price, which I did not expect and did not have to argue about.",
+    cart: "EZGO RXV",
+  },
+  {
+    name: "Sofia M.",
+    location: "wichita-falls",
+    city: "Wichita Falls",
+    stateCode: "TX",
+    rating: 4,
+    date: "2026-05-30",
+    body: "Good price and a straight deal on a utility cart for the ranch. Delivery took a week longer than quoted, but they called me before I had to call them.",
+    cart: "Cushman Hauler",
+  },
+  {
+    name: "Greg A.",
+    location: "long-pond",
+    city: "Long Pond",
+    stateCode: "PA",
+    rating: 5,
+    date: "2026-05-16",
+    body: "Six carts for a campground fleet. They sourced the two extra I needed inside of a fortnight and matched the event pricing on all six.",
+    cart: "Club Car Precedent",
+  },
+];
+
+export default testimonials;
