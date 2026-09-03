@@ -107,6 +107,11 @@ function buildContext(snapshot: Snapshot, count: number, results: FilterableCart
   const states = new Set(snapshot.stores.map((store) => store.state)).size;
   return {
     n: String(count),
+    // Plural-aware nouns: a category with exactly one cart in it must not read
+    // "1 golf carts" in the meta description a searcher sees.
+    carts: count === 1 ? "cart" : "carts",
+    Carts: count === 1 ? "Cart" : "Carts",
+    is: count === 1 ? "is" : "are",
     new: String(results.filter((cart) => cart.condition === "new").length),
     used: String(results.filter((cart) => cart.condition === "used").length),
     electric: String(results.filter((cart) => cart.fuel === "electric").length),

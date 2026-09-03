@@ -137,7 +137,7 @@ export const LISTING_ROUTES: ListingRoute[] = [
     h1: "Utility Golf Carts for Sale",
     title: "Utility Golf Carts for Sale — {n} in Stock",
     description:
-      "{n} utility golf carts with cargo beds for grounds, farm, warehouse and campground work. Haul tools and material, not passengers. 0% APR for 48 months.",
+      "{n} utility golf {carts} with cargo beds for grounds, farm, warehouse and campground work. Haul tools and material, not passengers. 0% APR for 48 months.",
     question: "What is a utility golf cart?",
     answer:
       "A utility golf cart trades rear seating for a cargo bed. It is built to haul tools, feed, turf material or luggage rather than people, and is what grounds crews, farms, warehouses, campgrounds and maintenance departments buy. We have {n} in stock, priced from {min}.",
@@ -237,7 +237,7 @@ export const LISTING_ROUTES: ListingRoute[] = [
     h1: "4x4 Golf Carts for Sale",
     title: "4x4 Golf Carts for Sale — {n} in Stock",
     description:
-      "{n} four-wheel-drive golf carts for soft sand, mud and steep ground. Power to all four wheels where a 2x4 cart loses traction. Call for current stock.",
+      "{n} four-wheel-drive golf {carts} for soft sand, mud and steep ground. Power to all four wheels where a 2x4 cart loses traction. Call for current stock.",
     question: "Do you need a 4x4 golf cart?",
     answer:
       "Only if you regularly cross soft sand, mud or steep wet ground. Four-wheel drive sends power to all four wheels, so the cart keeps moving where a 2x4 spins. For paved paths, turf and packed gravel a lifted 2x4 on all-terrain tires is enough, and cheaper. We hold {n} in stock.",

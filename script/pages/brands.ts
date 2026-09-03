@@ -254,7 +254,9 @@ ${ctaBand(
     path,
     title: clamp(`${make.label} Golf Carts for Sale — ${make.count} in Stock`, 60),
     description: clamp(
-      `${make.count} ${make.label} golf carts for sale${min ? ` from ${formatPrice(min)}` : ""}. ${counts.new} new, ${counts.used} used${counts.streetLegal ? `, ${counts.streetLegal} street legal` : ""}. 0% APR for 48 months.`,
+      `${make.count} ${make.label} golf cart${make.count === 1 ? "" : "s"} for sale${min ? ` from ${formatPrice(min)}` : ""}. ` +
+        `${[counts.new ? `${counts.new} new` : "", counts.used ? `${counts.used} used` : "", counts.streetLegal ? `${counts.streetLegal} street legal` : ""].filter(Boolean).join(", ")}. ` +
+        `0% APR for 48 months.`,
       155,
     ),
     body,
@@ -364,7 +366,9 @@ ${ctaBand(`Want a ${name} we do not have?`, `Call ${site.phone} — we source ${
     path,
     title: clamp(`${name} for Sale — ${carts.length} in Stock`, 60),
     description: clamp(
-      `${carts.length} ${name} golf carts for sale${min ? ` from ${formatPrice(min)}` : ""}. ${counts.new} new, ${counts.used} used. 0% APR for 48 months. Call ${site.phone}.`,
+      `${carts.length} ${name} golf cart${carts.length === 1 ? "" : "s"} for sale${min ? ` from ${formatPrice(min)}` : ""}. ` +
+        `${[counts.new ? `${counts.new} new` : "", counts.used ? `${counts.used} used` : ""].filter(Boolean).join(", ")}. ` +
+        `0% APR for 48 months. Call ${site.phone}.`,
       155,
     ),
     body,
