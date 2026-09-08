@@ -57,14 +57,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # tests/ui-restore.test.ts drives a real browser. Runners ship no
+      # Playwright browsers, so without this step `npm test` fails at launch
+      # and the deploy job never runs.
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install the Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
       # Optimized cart photography is derived, not committed. Caching it means a
       # scheduled refresh only encodes photos for carts that are actually new,
       # which takes the image step from ~10 minutes to well under one.
+      - name: Stamp the date for the image cache key
+        id: datestamp
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      # Keyed by day rather than by the committed snapshot: the snapshot hash
+      # never changes between runs, so the key always hit and newly-listed
+      # carts' photos were re-encoded every run and never cached. A daily key
+      # saves once a day and restores the previous day's work in between.
       - name: Restore optimized image cache
         uses: actions/cache@v4
         with:
           path: public/images/carts
-          key: cart-images-${{ hashFiles('src/data/snapshot.json') }}
+          key: cart-images-${{ steps.datestamp.outputs.day }}
           restore-keys: |
             cart-images-
 

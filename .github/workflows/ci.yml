@@ -26,19 +26,28 @@ jobs:
           cache: npm
       - run: npm ci
 
-      - name: Filter tests
-        run: npm test
+      - name: Cache the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
 
-      # `build:site` skips the network fetch and reuses the committed snapshot.
-      # Cart photos are skipped: CI is checking the build, not re-encoding 969
-      # images, and the manifest degrades to remote originals when they are
-      # absent.
+      - name: Install the Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # The browser tests need a built dist/ to drive, so the build comes first
+      # and the full suite runs after it.
       - name: Build from the committed snapshot
         run: |
           npm run generate-seo
           node script/optimize-assets.ts --skip-carts
           npx vite build
           npm run prerender
+
+      - name: Tests
+        run: npm test
 
       - name: Verify the build
         run: npm run verify

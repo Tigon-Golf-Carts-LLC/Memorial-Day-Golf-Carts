@@ -21,6 +21,44 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = resolve(root, "dist");
 const built = existsSync(join(DIST, "index.html"));
 
+/**
+ * Whether a Playwright browser is actually installed.
+ *
+ * Runners ship none, so `npx playwright install chromium` has to run first —
+ * both workflows do that. Outside CI a missing browser is not a failure: it
+ * just means `npm test` on a fresh clone runs the filter tests and reports
+ * these as skipped, rather than dying with a raw Playwright stack trace.
+ *
+ * In CI a missing browser IS a failure: the workflow is supposed to install it,
+ * and silently skipping would mean the browser tests quietly stopped running.
+ */
+async function browserAvailable(): Promise<{ ok: boolean; reason: string }> {
+  if (!built) return { ok: false, reason: "dist/ not built — run `npm run build` first" };
+  try {
+    const { chromium } = await import("playwright");
+    const path = chromium.executablePath();
+    if (existsSync(path)) return { ok: true, reason: "" };
+    return {
+      ok: false,
+      reason: `no Playwright browser at ${path} — run \`npx playwright install chromium\``,
+    };
+  } catch (error) {
+    return { ok: false, reason: `playwright is not installed: ${(error as Error).message}` };
+  }
+}
+
+const availability = await browserAvailable();
+if (!availability.ok && process.env.CI) {
+  // Never let a misconfigured runner turn the browser suite into a silent no-op.
+  throw new Error(
+    `Browser tests cannot run in CI: ${availability.reason}\n` +
+      "The workflow must run `npx playwright install --with-deps chromium` before `npm test`.",
+  );
+}
+if (!availability.ok) {
+  process.stderr.write(`\nSkipping the browser tests: ${availability.reason}\n\n`);
+}
+
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -93,14 +131,11 @@ async function waitForHydration(page: any) {
   await page.waitForSelector('[data-inventory-grid][data-hydrated="true"]', { timeout: 15_000 });
 }
 
-describe("inventory UI in a browser", { skip: built ? false : "dist/ not built — run `npm run build` first" }, () => {
+describe("inventory UI in a browser", { skip: availability.ok ? false : availability.reason }, () => {
   before(async () => {
     origin = await startServer();
     const { chromium } = await import("playwright");
-    browser = await chromium.launch({
-      executablePath: process.env.CHROMIUM_PATH || undefined,
-      args: ["--no-sandbox", "--disable-dev-shm-usage"],
-    });
+    browser = await chromium.launch({ args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   });
 
   after(async () => {
