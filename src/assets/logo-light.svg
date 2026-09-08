@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 160" role="img" aria-label="Independence Day Golf Carts">
+  <title>Independence Day Golf Carts</title>
+  <g transform="translate(4 8) scale(0.2812)">
+    <path d="M256 20 462 86v170c0 106-84 189-206 236C134 445 50 362 50 256V86z" fill="#0A1F45"/>
+    <path d="M256 20 462 86v170c0 106-84 189-206 236C134 445 50 362 50 256V86z" fill="none" stroke="#ffffff" stroke-width="16"/>
+    <clipPath id="dclip"><path d="M256 36 446 97v159c0 98-78 175-190 219C144 431 66 354 66 256V97z"/></clipPath>
+    <g clip-path="url(#dclip)">
+      <rect x="60" y="286" width="400" height="30" fill="#E4405F"/>
+      <rect x="60" y="346" width="400" height="30" fill="#E4405F"/>
+      <rect x="60" y="406" width="400" height="30" fill="#E4405F"/>
+      <rect x="60" y="316" width="400" height="30" fill="#ffffff"/>
+      <rect x="60" y="376" width="400" height="30" fill="#ffffff"/>
+    </g>
+    <g fill="#ffffff">
+      <path d="M256 84l13.6 27.5 30.4 4.4-22 21.4 5.2 30.3L256 153.3l-27.2 14.3 5.2-30.3-22-21.4 30.4-4.4z"/>
+      <path d="M150 246h34l16-38h96l14 38h44a10 10 0 0 1 10 10v42a10 10 0 0 1-10 10h-16a30 30 0 0 0-60 0h-52a30 30 0 0 0-60 0h-16a10 10 0 0 1-10-10v-42a10 10 0 0 1 10-10zm60-30-9 26h84l-9-26z"/>
+      <rect x="188" y="182" width="10" height="66" rx="5"/><rect x="312" y="182" width="10" height="66" rx="5"/>
+      <rect x="172" y="170" width="166" height="15" rx="7"/>
+    </g>
+    <g fill="#E4405F"><circle cx="202" cy="330" r="24"/><circle cx="314" cy="330" r="24"/></g>
+    <g fill="#ffffff"><circle cx="202" cy="330" r="9"/><circle cx="314" cy="330" r="9"/></g>
+  </g>
+  <g font-family="'Barlow Condensed','Arial Narrow',Impact,sans-serif" font-weight="700">
+    <text x="164" y="62" font-size="46" letter-spacing="1.5" fill="#FF5A78">INDEPENDENCE DAY</text>
+    <text x="164" y="112" font-size="46" letter-spacing="6" fill="#ffffff">GOLF CARTS</text>
+  </g>
+  <rect x="164" y="126" width="150" height="7" fill="#E4405F"/>
+  <rect x="322" y="126" width="150" height="7" fill="#7FA0D8"/>
+  <text x="164" y="152" font-family="'Barlow','Helvetica Neue',Arial,sans-serif" font-size="18" letter-spacing="3.4" fill="#9DB2D6">THE JULY 4TH SALES EVENT</text>
+</svg>
