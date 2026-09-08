@@ -41,6 +41,22 @@ env:
   # no separate TypeScript compile step. Node 20 cannot do this.
   NODE_VERSION: "22"
 
+  # --- which DMS records get published ------------------------------------
+  #
+  # The DMS marks most records rfsStatus.isRFS false. Honouring that flag
+  # published 255 of 1,331 records; the dealership's own count is 800+, so the
+  # flag is not tracking "for sale" in this data and is not used as a gate.
+  #
+  # REQUIRE_PRICE replaces it with a narrower guard aimed at the actual risk
+  # the flag was standing in for: a record with no resolvable asking price is
+  # never published, so a cart cannot appear priced at $0 or "Call" by
+  # accident.
+  #
+  # To revert to the conservative rule, set REQUIRE_RFS back to "true".
+  # Every build logs a PUBLISHABILITY FUNNEL showing what each setting yields.
+  REQUIRE_RFS: "false"
+  REQUIRE_PRICE: "true"
+
 jobs:
   build:
     runs-on: ubuntu-latest

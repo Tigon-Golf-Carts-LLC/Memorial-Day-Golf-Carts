@@ -60,6 +60,26 @@ const useFixture = process.argv.includes("--fixture");
 const FIXTURE = resolve(root, "assets-raw/dms-fixture.json");
 
 /**
+ * Publishability gates, both configurable from the workflow env.
+ *
+ * `REQUIRE_RFS` is the one that matters. The DMS marks most records
+ * rfsStatus.isRFS false, and on the sister site that flag was decisive: those
+ * records were said to carry an internal figure rather than an asking price,
+ * so publishing them put wrong prices on the floor. Whether that is still true
+ * of this dealer group's data is a business question, not a code question — so
+ * it is a switch, defaulting to the safe answer, and the funnel report below
+ * prints exactly what flipping it would publish.
+ *
+ *   REQUIRE_RFS=false     publish records regardless of the isRFS flag
+ *   REQUIRE_PHOTOS=false  publish records with no photograph (not advised:
+ *                         they render behind a placeholder)
+ *   REQUIRE_PRICE=true    additionally require a positive resolved price
+ */
+const REQUIRE_RFS = process.env.REQUIRE_RFS !== "false";
+const REQUIRE_PHOTOS = process.env.REQUIRE_PHOTOS !== "false";
+const REQUIRE_PRICE = process.env.REQUIRE_PRICE === "true";
+
+/**
  * Fields present on the raw DMS record (or the previous snapshot shape) that
  * the frontend never reads, and which this script deliberately drops.
  * Reported at the end of every run so the list stays honest.
@@ -168,8 +188,11 @@ function publicImages(raw: any): string[] {
  *            listed behind a placeholder.
  */
 function isSellable(raw: any): boolean {
-  if (raw?.rfsStatus?.isRFS !== true) return false;
-  if (publicImages(raw).length === 0) return false;
+  if (REQUIRE_RFS && raw?.rfsStatus?.isRFS !== true) return false;
+  if (REQUIRE_PHOTOS && publicImages(raw).length === 0) return false;
+  if (REQUIRE_PRICE && resolvePrice(raw) === null) return false;
+  // These four are never optional: a scrap cart, a cart in the service bay or
+  // one that is not in stock is not for sale at any price.
   const status = String(raw?.status ?? "").toLowerCase();
   if (NON_RETAIL_STATUS.has(status)) return false;
   if (raw?.isInBoneyard === true) return false;
@@ -180,9 +203,83 @@ function isSellable(raw: any): boolean {
 
 /** Why a record was held back, for the snapshot's audit block. */
 function exclusionReason(raw: any): string {
-  if (raw?.rfsStatus?.isRFS !== true) return "not ready for sale (isRFS false)";
-  if (publicImages(raw).length === 0) return "no photograph";
+  if (REQUIRE_RFS && raw?.rfsStatus?.isRFS !== true) return "not ready for sale (isRFS false)";
+  if (REQUIRE_PHOTOS && publicImages(raw).length === 0) return "no photograph";
+  if (REQUIRE_PRICE && resolvePrice(raw) === null) return "no price";
   return `status: ${raw?.status ?? "unknown"}`;
+}
+
+/**
+ * What each candidate rule set would publish, printed on every run.
+ *
+ * This exists because the gap between "records the DMS returns" and "carts on
+ * the site" was 1,076 records and there was no way to see inside it without
+ * reading code. Anyone can now read the funnel off the build log and decide
+ * whether the isRFS gate is earning its place.
+ */
+function reportFunnel(rawCarts: any[]): void {
+  const alive = (raw: any) => {
+    const status = String(raw?.status ?? "").toLowerCase();
+    return (
+      !NON_RETAIL_STATUS.has(status) &&
+      raw?.isInBoneyard !== true &&
+      raw?.isService !== true &&
+      raw?.isInStock !== false
+    );
+  };
+
+  const rfs = (raw: any) => raw?.rfsStatus?.isRFS === true;
+  const photos = (raw: any) => publicImages(raw).length > 0;
+  const priced = (raw: any) => resolvePrice(raw) !== null;
+
+  const count = (predicate: (raw: any) => boolean) => rawCarts.filter(predicate).length;
+  const pad = (value: number) => String(value).padStart(6);
+
+  process.stderr.write(`\n${"=".repeat(72)}\nPUBLISHABILITY FUNNEL — ${rawCarts.length} records returned by the DMS\n${"=".repeat(72)}\n`);
+  process.stderr.write(`  ${pad(count(() => true))}  returned by /get-carts\n`);
+  process.stderr.write(`  ${pad(count(alive))}  in stock, not boneyard/service/WIP\n`);
+  process.stderr.write(`  ${pad(count((r) => alive(r) && photos(r)))}  ...and photographed\n`);
+  process.stderr.write(`  ${pad(count((r) => alive(r) && photos(r) && priced(r)))}  ...and priced\n`);
+  process.stderr.write(`  ${pad(count((r) => alive(r) && photos(r) && priced(r) && rfs(r)))}  ...and flagged ready for sale (isRFS)\n`);
+
+  process.stderr.write(`\n  What each rule set would publish:\n`);
+  process.stderr.write(`  ${pad(count((r) => alive(r) && photos(r) && rfs(r)))}  REQUIRE_RFS=true   (current default)\n`);
+  process.stderr.write(`  ${pad(count((r) => alive(r) && photos(r)))}  REQUIRE_RFS=false\n`);
+  process.stderr.write(`  ${pad(count((r) => alive(r) && photos(r) && priced(r)))}  REQUIRE_RFS=false REQUIRE_PRICE=true\n`);
+
+  // The decisive question about the excluded group: do those records carry a
+  // real asking price, or an internal figure? Print the evidence.
+  const held = rawCarts.filter((r) => alive(r) && photos(r) && !rfs(r));
+  if (held.length) {
+    const prices = held.map(resolvePrice).filter((p): p is number => p !== null).sort((a, b) => a - b);
+    const statuses = new Map<string, number>();
+    for (const raw of held) {
+      const key = String(raw?.status ?? "(none)");
+      statuses.set(key, (statuses.get(key) ?? 0) + 1);
+    }
+    const money = (value: number) => `$${Math.round(value).toLocaleString("en-US")}`;
+    process.stderr.write(
+      `\n  The ${held.length} photographed, in-stock records held back by isRFS:\n` +
+        `    ${prices.length} of ${held.length} carry a positive price\n`,
+    );
+    if (prices.length) {
+      process.stderr.write(
+        `    price range   ${money(prices[0])} – ${money(prices[prices.length - 1])}\n` +
+          `    median        ${money(prices[Math.floor(prices.length / 2)])}\n` +
+          `    under $1,000  ${prices.filter((p) => p < 1000).length}   (a low count suggests real asking prices)\n` +
+          `    over $25,000  ${prices.filter((p) => p > 25000).length}   (a high count suggests internal figures)\n`,
+      );
+    }
+    process.stderr.write(
+      `    status values: ${[...statuses.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}=${v}`).join(", ")}\n`,
+    );
+    process.stderr.write(
+      `\n  Set REQUIRE_RFS=false in the workflow env to publish these.\n` +
+        `  Compare the price range above against what these carts actually sell for\n` +
+        `  before doing so — that is the whole risk of the change.\n`,
+    );
+  }
+  process.stderr.write(`${"=".repeat(72)}\n`);
 }
 
 /**
@@ -548,6 +645,8 @@ async function main() {
   const stores = mergeStores(source.dmsStores);
   const storeById = new Map(stores.filter((store) => store.storeId).map((store) => [store.storeId as string, store]));
 
+  reportFunnel(source.rawCarts);
+
   const sellable = source.rawCarts.filter(isSellable);
   const exclusionReasons: Record<string, number> = {};
   for (const raw of source.rawCarts) {
@@ -589,6 +688,7 @@ async function main() {
     updatedAt,
     source: useFixture ? "dms-fixture" : "dms-live",
     dms: { baseUrl: DMS_BASE_URL },
+    rules: { requireRfs: REQUIRE_RFS, requirePhotos: REQUIRE_PHOTOS, requirePrice: REQUIRE_PRICE },
     fetch: {
       rawRecordsFetched: source.rawCarts.length,
       reportedTotal: source.reportedTotal,

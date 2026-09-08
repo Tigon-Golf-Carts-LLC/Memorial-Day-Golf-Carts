@@ -72,6 +72,69 @@ const SKIP_CARTS = flag("--skip-carts");
 const KEEP_ORIGINALS = flag("--keep-originals");
 const FORCE = flag("--force");
 
+/**
+ * The image budget, in megabytes, that cart photography may occupy in dist/.
+ *
+ * GitHub Pages caps a published site at 1 GB and script/budget.ts hard-fails
+ * past 500 MB. At the measured ~0.182 MB per photo across three widths plus
+ * AVIF, a 255-cart catalogue costs 188 MB and an 800-cart one would cost 591 MB
+ * — so the ladder cannot be fixed, it has to scale with the inventory.
+ */
+const IMAGE_BUDGET_MB = Number(process.env.IMAGE_BUDGET_MB ?? 350);
+
+/**
+ * Derivative ladders, richest first. The first one that fits the budget for the
+ * current catalogue size is used, and the choice is logged.
+ *
+ * `galleryWidths: []` means the non-primary photographs are not optimized at
+ * all: they have no manifest entry, so renderImage() falls back to the original
+ * on the DMS S3 bucket. Those are below-the-fold, lazily-loaded images on a
+ * detail page the visitor deliberately opened — the card, the hero, the OG
+ * image and the LCP element all come from the primary photo, which is always
+ * optimized.
+ */
+interface Ladder {
+  name: string;
+  primaryWidths: number[];
+  galleryWidths: number[];
+  avif: boolean;
+  note: string;
+}
+
+const LADDERS: Ladder[] = [
+  { name: "rich", primaryWidths: [400, 800, 1200], galleryWidths: [400, 800], avif: true,
+    note: "3 primary widths + AVIF, 2 gallery widths" },
+  { name: "standard", primaryWidths: [400, 800, 1200], galleryWidths: [400, 800], avif: false,
+    note: "3 primary widths, 2 gallery widths, no AVIF" },
+  { name: "compact", primaryWidths: [400, 800, 1200], galleryWidths: [800], avif: false,
+    note: "3 primary widths, 1 gallery width, no AVIF" },
+  { name: "lean", primaryWidths: [400, 800, 1200], galleryWidths: [], avif: false,
+    note: "3 primary widths; gallery photos served from the DMS bucket" },
+  { name: "minimal", primaryWidths: [400, 800], galleryWidths: [], avif: false,
+    note: "2 primary widths; gallery photos served from the DMS bucket" },
+];
+
+/** Measured average bytes per derivative at each width (4:3 crop, WebP q76). */
+const MEASURED_KB: Record<number, number> = { 400: 24, 800: 88, 1200: 185 };
+const AVIF_RATIO = 0.65;
+
+/** Megabytes a ladder would produce for the given photo distribution. */
+function projectMb(ladder: Ladder, cartCount: number, photoCount: number): number {
+  const sum = (widths: number[]) => widths.reduce((total, width) => total + (MEASURED_KB[width] ?? 100), 0);
+  const primaryKb = sum(ladder.primaryWidths) * (ladder.avif ? 1 + AVIF_RATIO : 1);
+  const galleryKb = sum(ladder.galleryWidths);
+  const galleryCount = Math.max(0, photoCount - cartCount);
+  return (cartCount * primaryKb + galleryCount * galleryKb) / 1024;
+}
+
+/** Pick the richest ladder that fits the budget. */
+function chooseLadder(cartCount: number, photoCount: number): Ladder {
+  for (const ladder of LADDERS) {
+    if (projectMb(ladder, cartCount, photoCount) <= IMAGE_BUDGET_MB) return ladder;
+  }
+  return LADDERS[LADDERS.length - 1];
+}
+
 /** WebP quality. 76 keeps a 800x600 cart photo under ~90 KB with no visible loss. */
 const WEBP_QUALITY = 76;
 const AVIF_QUALITY = 55;
@@ -353,21 +416,45 @@ async function main() {
 
   if (!SKIP_CARTS) {
     const carts = Number.isFinite(LIMIT) ? snapshot.carts.slice(0, LIMIT) : snapshot.carts;
+    const photoCount = carts.reduce((total: number, cart: any) => total + cart.images.length, 0);
+    const ladder = chooseLadder(carts.length, photoCount);
+
+    process.stderr.write(
+      `\n${"-".repeat(72)}\nImage ladder: ${ladder.name} — ${ladder.note}\n${"-".repeat(72)}\n`,
+    );
+    for (const candidate of LADDERS) {
+      const mb = projectMb(candidate, carts.length, photoCount);
+      process.stderr.write(
+        `  ${candidate === ladder ? "->" : "  "} ${candidate.name.padEnd(9)} ` +
+          `${mb.toFixed(0).padStart(5)} MB  ${mb <= IMAGE_BUDGET_MB ? "fits" : "over"} ` +
+          `the ${IMAGE_BUDGET_MB} MB budget\n`,
+      );
+    }
+    if (!ladder.galleryWidths.length) {
+      process.stderr.write(
+        `\n  Gallery photographs are not being optimized at this catalogue size.\n` +
+          `  Cards, heroes, OG images and every LCP element use the primary photo,\n` +
+          `  which is optimized; the remaining gallery shots load lazily from the\n` +
+          `  DMS bucket on the detail page. Raise IMAGE_BUDGET_MB to change this.\n`,
+      );
+    }
+
     const jobs: PhotoJob[] = [];
     for (const cart of carts) {
       cart.images.forEach((filename: string, index: number) => {
+        const widths = index === 0 ? ladder.primaryWidths : ladder.galleryWidths;
+        // An empty ladder for this role means "leave it on the origin bucket".
+        if (!widths.length) return;
         jobs.push({
           filename,
           stem: photoStem(cart, index),
-          // The primary photo carries the card, the hero and the OG card, so it
-          // gets the extra width and the AVIF encode. Gallery shots do not.
-          widths: index === 0 ? [...PRIMARY_WIDTHS] : [...GALLERY_WIDTHS],
-          wantAvif: index === 0,
+          widths: [...widths],
+          wantAvif: index === 0 && ladder.avif,
         });
       });
     }
     process.stderr.write(
-      `Optimizing ${jobs.length} cart photos from ${carts.length} carts ` +
+      `\nOptimizing ${jobs.length} of ${photoCount} cart photos from ${carts.length} carts ` +
         `(concurrency ${CONCURRENCY}, WebP q${WEBP_QUALITY}, 4:3 crop)\n`,
     );
     await runPool(jobs, manifest);
