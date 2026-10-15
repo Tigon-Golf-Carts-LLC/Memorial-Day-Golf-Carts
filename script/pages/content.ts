@@ -2,11 +2,11 @@
  * Content pages: financing, about, contact, service, trade-in, delivery, FAQ,
  * guides, legal, the HTML sitemap and the 404 body.
  *
- * Phase 8 — forms. There is no server, so every form on this site posts to
- * Formspree. `FORMSPREE_FORM_ID` is read from the environment at build time;
- * when it is unset the markup degrades to a mailto: link rather than shipping a
- * form that silently discards submissions. Every form page also carries the
- * phone number as the primary CTA.
+ * Phase 8 — forms. There is no server, so every lead form posts straight from
+ * the browser to the TIGON IOT webhook (see script/lib/lead-form.ts). With no
+ * TIGON_WEBHOOK_KEY at build time the markup degrades to call / email rather
+ * than shipping a form that silently discards submissions. Every form page
+ * also carries the phone number as the primary CTA.
  */
 
 import { site, salesEvent, financingPartners, keywords } from "../../src/config/site.ts";
@@ -22,72 +22,7 @@ import { guides } from "../../src/config/guides.ts";
 import { testimonials } from "../../src/config/testimonials.ts";
 import { LISTING_ROUTES } from "../lib/routes.ts";
 import { brandSlug } from "./brands.ts";
-
-/**
- * The Formspree form ID, injected at build time.
- * Unset means: render a mailto: link instead of a dead form.
- */
-const FORMSPREE_FORM_ID = process.env.FORMSPREE_FORM_ID || "";
-const FORMSPREE_ACTION = FORMSPREE_FORM_ID ? `https://formspree.io/f/${FORMSPREE_FORM_ID}` : "";
-
-/**
- * A lead form.
- *
- * Posts to Formspree when a form ID is configured. With no ID, the same fields
- * are replaced by a mailto: link and a visible note, so nothing pretends to
- * accept a submission it cannot deliver.
- */
-function leadForm(options: {
-  id: string;
-  subject: string;
-  heading: string;
-  fields?: Array<{ name: string; label: string; type?: string; required?: boolean; placeholder?: string }>;
-}): string {
-  const fields = options.fields ?? [
-    { name: "name", label: "Your name", required: true },
-    { name: "phone", label: "Phone", type: "tel", required: true },
-    { name: "email", label: "Email", type: "email", required: true },
-    { name: "message", label: "What are you looking for?", type: "textarea" },
-  ];
-
-  if (!FORMSPREE_ACTION) {
-    return `<div class="form-fallback" data-testid="form-fallback-${esc(options.id)}">
-  <h3>${esc(options.heading)}</h3>
-  <p>The quickest route is the phone — someone answers it ${esc(site.hoursSummary.toLowerCase())}</p>
-  <p>
-    <a class="btn btn--primary btn--lg" href="${esc(site.phoneTel)}">Call ${esc(site.phone)}</a>
-    <a class="btn btn--outline btn--lg" href="mailto:${esc(site.email)}?subject=${esc(options.subject)}">Email ${esc(site.email)}</a>
-  </p>
-  <p class="note">Email reaches a product specialist and is answered the same day during event hours.</p>
-</div>`;
-  }
-
-  return `<form class="lead-form" action="${esc(FORMSPREE_ACTION)}" method="POST" data-testid="form-${esc(options.id)}">
-  <h3>${esc(options.heading)}</h3>
-  <input type="hidden" name="_subject" value="${esc(options.subject)}">
-  <input type="hidden" name="_source" value="${esc(site.domain)}">
-  <p class="visually-hidden">
-    <label>Leave this field empty<input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></label>
-  </p>
-${fields
-  .map((field) => {
-    const id = `${options.id}-${field.name}`;
-    if (field.type === "textarea") {
-      return `  <label class="lead-form__field" for="${esc(id)}">
-    <span>${esc(field.label)}</span>
-    <textarea id="${esc(id)}" name="${esc(field.name)}" rows="4"${field.required ? " required" : ""}${field.placeholder ? ` placeholder="${esc(field.placeholder)}"` : ""}></textarea>
-  </label>`;
-    }
-    return `  <label class="lead-form__field" for="${esc(id)}">
-    <span>${esc(field.label)}</span>
-    <input id="${esc(id)}" type="${esc(field.type ?? "text")}" name="${esc(field.name)}"${field.required ? " required" : ""}${field.placeholder ? ` placeholder="${esc(field.placeholder)}"` : ""} autocomplete="${field.type === "tel" ? "tel" : field.type === "email" ? "email" : "on"}">
-  </label>`;
-  })
-  .join("\n")}
-  <button class="btn btn--primary btn--lg" type="submit">Send</button>
-  <p class="note">Or call <a href="${esc(site.phoneTel)}">${esc(site.phone)}</a> — ${esc(site.hoursSummary.toLowerCase())}</p>
-</form>`;
-}
+import { leadForm } from "../lib/lead-form.ts";
 
 /** Shared shell for a narrow prose page. */
 function simplePage(options: {
@@ -195,6 +130,19 @@ ${financingPartners
   .join("\n")}
     </div>
     <p>Applications are submitted directly to each lender on their own site — we never handle your credit information on this one. If you would rather not fill anything in, call ${esc(site.phone)} and a specialist will walk the options with you.</p>
+
+    <div class="financing-cta">
+      <a class="btn btn--primary btn--lg" href="${esc(site.phoneTel)}" data-testid="link-financing-phone">Call ${esc(site.phone)}</a>
+      <a class="btn btn--outline btn--lg" href="#financing-form">Apply for financing</a>
+    </div>
+${leadForm({
+    id: "financing-form",
+    subject: `Financing question — ${site.domain}`,
+    heading: "Ask about financing",
+    intro: "Tell us which cart you are looking at and a specialist will match you with the right lender and walk you through 0% APR.",
+    messagePlaceholder: "Which cart, how much you would like to put down, and any questions about terms",
+    submitLabel: "Send my financing question",
+  })}
 
     <h2>Does a trade-in change the financing?</h2>
     <p>It reduces the amount financed, which reduces the payment. Trade value stacks on top of event pricing rather than replacing it — see <a href="${esc(withBase("/trade-in/"))}">trading in your golf cart</a>.</p>`,
@@ -311,6 +259,7 @@ ${leadForm({
     id: "contact",
     subject: `Website enquiry — ${site.domain}`,
     heading: "Send a message",
+    intro: "Tell us what you are looking for and a specialist will get back to you the same day during event hours.",
   })}
     </div>
   </div>
@@ -449,14 +398,9 @@ ${leadForm({
     id: "trade-in",
     subject: `Trade-in appraisal request — ${site.domain}`,
     heading: "Get a trade appraisal",
-    fields: [
-      { name: "name", label: "Your name", required: true },
-      { name: "phone", label: "Phone", type: "tel", required: true },
-      { name: "email", label: "Email", type: "email", required: true },
-      { name: "cart", label: "Make, model and year", placeholder: "e.g. Club Car Precedent 2018" },
-      { name: "battery", label: "Battery type and age", placeholder: "e.g. lead-acid, replaced 2022" },
-      { name: "message", label: "Anything else we should know?", type: "textarea" },
-    ],
+    intro: "Enter the brand and model of the cart you are trading in. Photos of the body, seats and battery help us give you a tighter range.",
+    messagePlaceholder: "Year, battery type and age, condition — anything we should know",
+    submitLabel: "Request my appraisal",
   })}
     </div>
   </div>
@@ -997,4 +941,3 @@ ${ctaBand()}`;
   });
 }
 
-export { FORMSPREE_FORM_ID };

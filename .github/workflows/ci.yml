@@ -39,7 +39,11 @@ jobs:
 
       # The browser tests need a built dist/ to drive, so the build comes first
       # and the full suite runs after it.
+      # A dummy webhook key so the lead forms render and the browser tests can
+      # drive them. CI builds are never deployed; the tests intercept the POST.
       - name: Build from the committed snapshot
+        env:
+          TIGON_WEBHOOK_KEY: ci-test-key
         run: |
           npm run generate-seo
           node script/optimize-assets.ts --skip-carts

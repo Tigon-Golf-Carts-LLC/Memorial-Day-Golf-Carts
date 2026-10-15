@@ -63,6 +63,34 @@ block:
 - `BASE_PATH` — `/` for a custom domain or `<user>.github.io`;
   `/<repo-name>/` for a project site.
 
+## Lead forms (TIGON IOT Webhook Flows)
+
+Every lead form posts straight from the browser to this site's TIGON IOT
+webhook as `multipart/form-data`. There is no server, so there is no request
+signing (signatures are optional for this webhook) and no signing secret is
+ever used anywhere in this repository.
+
+| Where | What |
+| --- | --- |
+| Every page | "Get a Quote" (header), "Message us" (mobile bar), "Send us a message" (CTA band) open one site-wide modal form |
+| Inventory cards | "Ask" opens the modal pre-filled with that cart's brand, model, VIN and stock # (read-only) |
+| `/golfcart/*/` | Call + Apply for financing buttons, then an inline form pre-filled with the cart |
+| `/contact/`, `/trade-in/`, `/financing/` | Inline form |
+
+- `script/lib/lead-form.ts` renders the markup (all field names, hidden
+  `form_name="Contact form"`, tracking fields, the `website` spam trap).
+- `src/client/lead-form.ts` (bundled into every page) stores first-touch
+  UTMs / gclid / fbclid for 30 days, fills `url`, `referrer`, `ga_client_id`,
+  validates, posts, and shows the thank-you / error / 429 message.
+
+**The webhook key is not committed — this repository is public.** It is read
+from `TIGON_WEBHOOK_KEY` at build time. Add it once in GitHub: *Settings →
+Secrets and variables → Actions → New repository secret*, name
+`TIGON_WEBHOOK_KEY`, value = the key (the part after `/hooks/`). The deploy
+workflow passes it to the prerender step. Without it the forms render as a
+call / email fallback and the deploy logs a warning. CI builds use a dummy key
+and the browser tests intercept every POST, so tests never send a real lead.
+
 ## Requirements
 
 Node 22.6 or newer. The build scripts are TypeScript run directly by Node's

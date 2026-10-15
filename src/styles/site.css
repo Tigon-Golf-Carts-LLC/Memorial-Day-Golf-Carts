@@ -234,6 +234,10 @@ small, .note { font-size: 0.875rem; color: var(--muted); }
 .site-nav a[aria-current="page"] { color: var(--red); background: var(--red-soft); }
 
 .site-header__cta { display: flex; align-items: center; gap: 10px; }
+/* The header quote button only shows where it does not crowd the phone CTA:
+   wide screens, and tablets once the nav has collapsed into the toggle. */
+.btn--quote { white-space: nowrap; }
+@media (min-width: 1081px) and (max-width: 1439px) { .btn--quote { display: none; } }
 
 .nav-toggle {
   display: none;
@@ -517,7 +521,7 @@ small, .note { font-size: 0.875rem; color: var(--muted); }
 }
 .cart-card__mo { font-size: 0.8rem; color: var(--success); font-weight: 600; }
 .cart-card__cta { display: flex; gap: 8px; }
-.cart-card__cta .btn--outline { flex: 1; }
+.cart-card__cta a.btn--outline { flex: 1; }
 
 .badge {
   display: inline-block;
@@ -1005,6 +1009,54 @@ small, .note { font-size: 0.875rem; color: var(--muted); }
 .lead-form__field textarea { resize: vertical; min-height: 96px; }
 .form-fallback p:last-child { margin-bottom: 0; }
 
+/* TIGON lead form: two columns of short fields, full-width long ones. */
+.lead-form__grid { display: flex; flex-wrap: wrap; column-gap: 14px; }
+.lead-form__grid > .lead-form__field { flex: 1 1 100%; min-width: 0; }
+.lead-form__grid > .lead-form__field--half { flex: 1 1 200px; }
+.lead-form__field abbr { color: var(--red); text-decoration: none; }
+.lead-form__field input[readonly] { background: var(--surface); color: var(--muted); }
+.lead-form__field input[type="file"] { padding: 8px; border-style: dashed; }
+.lead-form__field input[aria-invalid="true"], .lead-form__field textarea[aria-invalid="true"] { border-color: var(--red); }
+.lead-form__error { display: block; margin-top: 4px; font-size: 0.85rem; font-weight: 600; color: var(--red); }
+.lead-form__intro { margin-top: 0; }
+.lead-form__about { margin: 0 0 14px; padding: 10px 12px; background: var(--navy-soft); border-radius: var(--radius); color: var(--ink); }
+.lead-form__photos { flex: 1 1 100%; margin: 0 0 14px; padding: 12px 14px 0; border: 1px solid var(--line); border-radius: var(--radius); }
+.lead-form__photos legend { padding: 0 6px; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+.lead-form__submit[disabled] { opacity: 0.65; cursor: wait; }
+.lead-form__status { min-height: 1.4em; margin: 12px 0 0; font-weight: 600; }
+.lead-form__status[data-state="ok"] { color: var(--success); }
+.lead-form__status[data-state="error"] { color: var(--red); }
+.lead-form__status[data-state="busy"] { color: var(--muted); }
+/* Spam trap: off-screen, never display:none, so bots still see and fill it. */
+.lead-form__hp { position: absolute !important; left: -9999px !important; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.vehicle__info .lead-form { margin-top: 20px; }
+.financing-cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+
+/* The site-wide lead modal. */
+.lead-modal {
+  width: min(680px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  color: var(--body);
+  box-shadow: var(--shadow-lg);
+}
+.lead-modal::backdrop { background: rgba(11, 18, 36, 0.6); }
+.lead-modal__inner { position: relative; padding: 24px; }
+.lead-modal h2 { margin: 0 40px 6px 0; }
+.lead-modal__lede { margin-top: 0; }
+.lead-modal .lead-form { padding: 0; border: 0; box-shadow: none; background: transparent; }
+.lead-modal__close {
+  position: absolute; top: 12px; right: 12px;
+  width: 40px; height: 40px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-pill);
+  background: var(--bg); color: var(--ink);
+  font-size: 1.5rem; line-height: 1; cursor: pointer;
+}
+.lead-modal__close:hover { background: var(--navy-soft); }
+
 .contact-layout, .location-detail {
   display: grid;
   gap: clamp(22px, 3vw, 44px);
@@ -1117,7 +1169,10 @@ small, .note { font-size: 0.875rem; color: var(--muted); }
     backdrop-filter: saturate(160%) blur(10px);
     border-top: 1px solid var(--line);
   }
-  .sticky-call .btn { width: 100%; }
+  .sticky-call { display: flex; gap: 8px; }
+  .sticky-call .btn { flex: 1 1 0; white-space: nowrap; }
+  .sticky-call .btn--light { flex: 0 0 auto; border-color: var(--line-strong); }
+  .btn--quote { display: none; }
 }
 
 /* --------------------------------------------------------------- print --- */

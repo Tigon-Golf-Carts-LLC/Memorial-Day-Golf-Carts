@@ -10,6 +10,11 @@
  */
 
 import "../styles/site.css";
+import { initLeadForms } from "./lead-form.ts";
+
+/* ------------------------------------------------------------ lead forms --- */
+
+initLeadForms();
 
 /* ------------------------------------------------------------ mobile nav --- */
 
