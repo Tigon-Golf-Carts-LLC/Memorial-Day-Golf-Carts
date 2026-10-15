@@ -102,7 +102,19 @@ jobs:
       - name: Build
         run: npx vite build
 
+      # The TIGON IOT webhook key is a repository secret, never committed: this
+      # repository is public. Lead forms post to https://tigoniot.com/hooks/<key>.
+      - name: Check the lead-form webhook key
+        env:
+          TIGON_WEBHOOK_KEY: ${{ secrets.TIGON_WEBHOOK_KEY }}
+        run: |
+          if [ -z "$TIGON_WEBHOOK_KEY" ]; then
+            echo "::warning::TIGON_WEBHOOK_KEY secret is not set — lead forms will render as a call/email fallback."
+          fi
+
       - name: Prerender every route
+        env:
+          TIGON_WEBHOOK_KEY: ${{ secrets.TIGON_WEBHOOK_KEY }}
         run: npm run prerender
 
       - name: Check the performance budget

@@ -251,6 +251,7 @@ ${monthly ? `      <span class="cart-card__mo">$${monthly.toLocaleString("en-US"
     <div class="cart-card__cta">
       <a class="btn btn--outline btn--sm" href="${escapeHtml(href)}">View Details</a>
       <a class="btn btn--primary btn--sm btn--icon" href="${escapeHtml(PHONE_TEL)}" aria-label="Call ${escapeHtml(PHONE)} about the ${escapeHtml(cart.title)}">Call</a>
+      <button class="btn btn--outline btn--sm btn--icon" type="button" data-lead-open data-lead-brand="${escapeHtml(cart.makeLabel)}" data-lead-model="${escapeHtml(cart.modelLabel)}" data-lead-sku="${escapeHtml(cart.id)}" data-lead-label="${escapeHtml([cart.year, cart.title].filter(Boolean).join(" "))}" aria-label="Ask about the ${escapeHtml(cart.title)}" data-testid="button-ask-${escapeHtml(cart.id)}">Ask</button>
     </div>
   </div>
 </article>`;

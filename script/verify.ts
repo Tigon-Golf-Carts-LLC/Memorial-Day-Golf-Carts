@@ -333,6 +333,28 @@ function main() {
   const sameOriginForm = formActions.filter((action) => !/^https?:\/\//i.test(action));
   record("no form posts to a same-origin endpoint", sameOriginForm.length === 0, formActions.length ? formActions.join(", ") : "no form (mailto fallback)");
 
+  // TIGON IOT lead forms: every page carries the modal, and a configured build
+  // ships the full field set, the tracking fields and the spam trap.
+  const htmlPages = fileList.filter((file) => file.endsWith(".html"));
+  const noModal = htmlPages.filter((file) => !readFileSync(resolve(DIST, file), "utf8").includes('id="lead-modal"'));
+  record("every page carries the lead modal", noModal.length === 0, `${noModal.length} missing`);
+  if (process.env.TIGON_WEBHOOK_KEY) {
+    const leadFields = [
+      "form_name", "first_name", "last_name", "phone1", "phone2", "address", "email", "zip_code",
+      "model", "brand", "vin_number", "sku_number", "url", "comments", "image_1", "image_2", "image_3",
+      "referrer", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "fbclid",
+      "ga_client_id", "website",
+    ];
+    const contactForm = /<form[^>]*data-testid="form-contact"[\s\S]*?<\/form>/.exec(contact)?.[0] ?? "";
+    const missingFields = leadFields.filter((name) => !contactForm.includes(`name="${name}"`));
+    record("contact lead form has every TIGON field", missingFields.length === 0, missingFields.join(", ") || "all present");
+    record(
+      "contact lead form posts to the TIGON webhook",
+      contactForm.includes(`action="https://tigoniot.com/hooks/${process.env.TIGON_WEBHOOK_KEY}"`),
+      "",
+    );
+  }
+
   /* --- report --------------------------------------------------------- */
 
   process.stdout.write("\n");

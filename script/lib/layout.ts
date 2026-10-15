@@ -21,6 +21,7 @@ import {
   graph, organizationNode, websiteNode, webPageNode, breadcrumbNode,
   type Crumb, type Store,
 } from "./schema.ts";
+import { leadModal, leadOpenAttrs } from "./lead-form.ts";
 
 export interface PageOptions {
   /** Route path, e.g. "/inventory/new/". Used for the canonical and @id values. */
@@ -102,6 +103,7 @@ ${nav.map(link).map((item) => `        ${item}`).join("\n")}
       </ul>
     </nav>
     <div class="site-header__cta">
+      <button class="btn btn--outline btn--quote" type="button" ${leadOpenAttrs()} data-testid="button-header-quote">Get a Quote</button>
       <a class="btn btn--primary btn--call" href="${esc(site.phoneTel)}" data-testid="link-header-phone">
         <span class="btn__icon">${PHONE_ICON}</span>
         <span class="btn__label">${esc(site.phone)}</span>
@@ -223,12 +225,14 @@ ${topStores
     </div>
   </div>
 </footer>
-<div class="sticky-call" role="complementary" aria-label="Call us">
+<div class="sticky-call" role="complementary" aria-label="Call or message us">
   <a class="btn btn--primary" href="${esc(site.phoneTel)}" data-testid="link-sticky-phone">
     <span class="btn__icon">${PHONE_ICON}</span>
     <span class="btn__label">Call ${esc(site.phone)}</span>
   </a>
-</div>`;
+  <button class="btn btn--light" type="button" ${leadOpenAttrs()} data-testid="button-sticky-quote">Message us</button>
+</div>
+${leadModal()}`;
 }
 
 /* ---------------------------------------------------------- breadcrumbs --- */

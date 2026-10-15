@@ -15,6 +15,7 @@
 import { site, salesEvent } from "../../src/config/site.ts";
 import { esc, withBase, formatPrice, monthlyPayment } from "./util.ts";
 import { renderImage, cartImageEntry, cartImageAlt } from "./images.ts";
+import { leadOpenAttrs } from "./lead-form.ts";
 import { FEATURE_LABELS, FIELD_LABELS, type FacetCount, type MultiField, type FilterState, type ActiveFilter } from "../../src/lib/filters.ts";
 
 /* --------------------------------------------------------------- AEO bits --- */
@@ -170,6 +171,7 @@ ${monthly ? `      <span class="cart-card__mo">$${Math.round(monthly).toLocaleSt
     <div class="cart-card__cta">
       <a class="btn btn--outline btn--sm" href="${esc(href)}">View Details</a>
       <a class="btn btn--primary btn--sm btn--icon" href="${esc(site.phoneTel)}" aria-label="Call ${esc(site.phone)} about the ${esc(cart.title)}">Call</a>
+      <button class="btn btn--outline btn--sm btn--icon" type="button" ${leadOpenAttrs({ brand: cart.makeLabel, model: cart.modelLabel, vin: (cart as { vin?: string }).vin ?? "", sku: cart.id, label: [cart.year, cart.title].filter(Boolean).join(" ") })} aria-label="Ask about the ${esc(cart.title)}" data-testid="button-ask-${esc(cart.id)}">Ask</button>
     </div>
   </div>
 </article>`;
@@ -390,6 +392,7 @@ export function ctaBand(headline?: string, blurb?: string): string {
       <a class="btn btn--primary btn--lg" href="${esc(site.phoneTel)}" data-testid="link-cta-phone">
         <span class="btn__label">Call ${esc(site.phone)}</span>
       </a>
+      <button class="btn btn--light btn--lg" type="button" ${leadOpenAttrs()} data-testid="button-cta-quote">Send us a message</button>
       <a class="btn btn--outline btn--lg" href="${esc(withBase("/inventory/"))}">Browse all inventory</a>
     </div>
     <p class="note">${esc(site.hoursSummary)}</p>

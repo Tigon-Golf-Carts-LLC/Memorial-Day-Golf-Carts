@@ -16,6 +16,7 @@ import { vehicleNode, faqNode, type Crumb, type Store } from "../lib/schema.ts";
 import { renderImage, cartImageEntry, cartImageAlt } from "../lib/images.ts";
 import { FEATURE_LABELS, type FilterableCart } from "../../src/lib/filters.ts";
 import { pickFaq } from "./inventory.ts";
+import { leadForm } from "../lib/lead-form.ts";
 
 export interface VehiclePageOptions {
   cart: FilterableCart & Record<string, any>;
@@ -188,8 +189,22 @@ ${monthly ? `        <span class="vehicle__price-mo">$${Math.round(monthly).toLo
 ${answerBlock(`What is this ${cart.makeLabel || "golf"} cart?`, esc(answer), snapshot.updatedAt.slice(0, 10))}
       <div class="vehicle__cta">
         <a class="btn btn--primary btn--lg" href="${esc(site.phoneTel)}" data-testid="link-vehicle-phone">Call ${esc(site.phone)}</a>
-        <a class="btn btn--outline btn--lg" href="mailto:${esc(site.email)}?subject=${esc(`Inquiry: ${heading} (stock ${cart.id})`)}&amp;body=${esc(`I am interested in the ${heading} listed at ${absoluteUrl(path)}.`)}" data-testid="link-vehicle-email">Email about this cart</a>
+        <a class="btn btn--outline btn--lg" href="${esc(withBase("/financing/"))}" data-testid="link-vehicle-financing">Apply for financing</a>
       </div>
+${leadForm({
+    id: "vehicle-form",
+    heading: "Check availability on this cart",
+    submitLabel: "Ask about this cart",
+    messagePlaceholder: "Is this cart still available? Any questions about delivery, trade-in or financing?",
+    subject: `Inquiry: ${heading} (stock ${cart.id})`,
+    cart: {
+      brand: cart.makeLabel || "",
+      model: cart.modelLabel || "",
+      vin: cart.vin || "",
+      sku: cart.id,
+      label: heading,
+    },
+  })}
       <p class="note">${esc(site.hoursSummary)}${where ? ` &middot; On the lot in <a href="${withBase(`/locations/${cart.location}/`)}">${esc(where)}</a>` : ""}</p>
     </div>
   </div>
