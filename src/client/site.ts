@@ -11,10 +11,15 @@
 
 import "../styles/site.css";
 import { initLeadForms } from "./lead-form.ts";
+import { initContactWidget } from "./contact-widget.ts";
 
 /* ------------------------------------------------------------ lead forms --- */
 
 initLeadForms();
+
+/* -------------------------------------------------------- contact widget --- */
+
+initContactWidget();
 
 /* ------------------------------------------------------------ mobile nav --- */
 

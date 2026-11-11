@@ -13,6 +13,11 @@
  * Phase 8: the phone number is rendered from `site.phone` and linked with
  * `site.phoneTel` in the header, the footer and a sticky mobile bar, and the
  * same digits appear in the schema graph.
+ *
+ * Contact widget: one floating bubble, bottom-right on every page, that opens
+ * a menu of the three ways to reach us — the site-wide lead form modal, the
+ * Tigon DMS chat plugin (its own launcher is hidden; see
+ * src/client/contact-widget.ts) and a tel: link.
  */
 
 import { site, nav, salesEvent } from "../../src/config/site.ts";
@@ -225,14 +230,74 @@ ${topStores
     </div>
   </div>
 </footer>
-<div class="sticky-call" role="complementary" aria-label="Call or message us">
-  <a class="btn btn--primary" href="${esc(site.phoneTel)}" data-testid="link-sticky-phone">
-    <span class="btn__icon">${PHONE_ICON}</span>
-    <span class="btn__label">Call ${esc(site.phone)}</span>
-  </a>
-  <button class="btn btn--light" type="button" ${leadOpenAttrs()} data-testid="button-sticky-quote">Message us</button>
-</div>
+${contactWidget()}
 ${leadModal()}`;
+}
+
+/* -------------------------------------------------------- contact widget --- */
+
+/** The Tigon DMS chat plugin. It renders into a shadow root on <body>. */
+export const CHAT_PLUGIN_SRC = "https://s3.amazonaws.com/prod.docs.s3/assets/chat-plugin/chat-plugin.js";
+
+const svg = (body: string) =>
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+
+const FORM_ICON = svg(
+  '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+);
+const CHAT_ICON = svg(
+  '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' +
+  '<path d="M8 10h.01M12 10h.01M16 10h.01"/>',
+);
+const CLOSE_ICON = svg('<path d="M18 6 6 18M6 6l12 12"/>');
+
+function contactWidget(): string {
+  return `<div class="contact-widget" data-contact-widget data-open="false" data-chat-open="false">
+  <div class="contact-widget__panel" id="contact-widget-panel" role="dialog" aria-modal="false" aria-labelledby="contact-widget-title" hidden data-contact-panel data-testid="panel-contact-widget">
+    <div class="contact-widget__head">
+      <div>
+        <h2 class="contact-widget__title" id="contact-widget-title">How can we help?</h2>
+        <p class="contact-widget__sub">${esc(site.hoursSummary)}</p>
+      </div>
+      <button class="contact-widget__close" type="button" data-contact-close aria-label="Close contact options" data-testid="button-contact-widget-close">${CLOSE_ICON}</button>
+    </div>
+    <ul class="contact-widget__list">
+      <li>
+        <button class="contact-widget__option" type="button" ${leadOpenAttrs()} data-contact-action="message" data-testid="button-contact-message">
+          <span class="contact-widget__icon">${FORM_ICON}</span>
+          <span class="contact-widget__text">
+            <span class="contact-widget__label">Send Us a Message</span>
+            <span class="contact-widget__desc">Submit a contact form, for us to contact you.</span>
+          </span>
+        </button>
+      </li>
+      <li>
+        <button class="contact-widget__option" type="button" data-contact-action="chat" data-testid="button-contact-chat">
+          <span class="contact-widget__icon">${CHAT_ICON}</span>
+          <span class="contact-widget__text">
+            <span class="contact-widget__label">Direct Message</span>
+            <span class="contact-widget__desc">Start a direct message with customer service.</span>
+          </span>
+        </button>
+      </li>
+      <li>
+        <a class="contact-widget__option" href="${esc(site.phoneTel)}" data-contact-action="call" data-testid="link-contact-call">
+          <span class="contact-widget__icon contact-widget__icon--call">${PHONE_ICON}</span>
+          <span class="contact-widget__text">
+            <span class="contact-widget__label">Call Now</span>
+            <span class="contact-widget__desc">Call us directly. <strong class="contact-widget__phone">${esc(site.phone)}</strong></span>
+          </span>
+        </a>
+      </li>
+    </ul>
+  </div>
+  <button class="contact-widget__toggle" type="button" aria-expanded="false" aria-controls="contact-widget-panel" aria-label="Contact us" data-contact-toggle data-testid="button-contact-widget">
+    <span class="contact-widget__toggle-icon contact-widget__toggle-icon--open">${CHAT_ICON}</span>
+    <span class="contact-widget__toggle-icon contact-widget__toggle-icon--close">${CLOSE_ICON}</span>
+    <span class="contact-widget__badge" data-contact-badge hidden></span>
+  </button>
+</div>`;
 }
 
 /* ---------------------------------------------------------- breadcrumbs --- */
@@ -346,6 +411,7 @@ ${options.body}
 ${footer(stores)}
 <script type="module" src="__JS_SITE__"></script>
 ${scripts.map((src) => `<script type="module" src="${esc(src)}"></script>`).join("\n")}
+<script async src="${CHAT_PLUGIN_SRC}"></script>
 </body>
 </html>
 `;

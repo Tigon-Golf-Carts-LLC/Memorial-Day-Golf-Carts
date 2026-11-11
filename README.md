@@ -35,9 +35,9 @@ component state is derived from it and never the reverse.
 | `npm run build` | fetch-data → generate-seo → optimize-assets → vite build → prerender |
 | `npm run build:site` | Same, skipping the network fetch (uses the committed snapshot) |
 | `npm run preview` | Serve `dist/` the way a static host does |
-| `npm test` | Filter unit tests + browser tests (53 tests) |
+| `npm test` | Filter unit tests + browser tests (63 tests) |
 | `npm run budget` | Size table, 20 largest files, budget gate |
-| `npm run verify` | 52 checks against the built output |
+| `npm run verify` | 54 checks against the built output |
 
 Useful flags:
 
@@ -72,7 +72,7 @@ ever used anywhere in this repository.
 
 | Where | What |
 | --- | --- |
-| Every page | "Get a Quote" (header), "Message us" (mobile bar), "Send us a message" (CTA band) open one site-wide modal form |
+| Every page | "Get a Quote" (header), "Send Us a Message" (contact bubble), "Send us a message" (CTA band) open one site-wide modal form |
 | Inventory cards | "Ask" opens the modal pre-filled with that cart's brand, model, VIN and stock # (read-only) |
 | `/golfcart/*/` | Call + Apply for financing buttons, then an inline form pre-filled with the cart |
 | `/contact/`, `/trade-in/`, `/financing/` | Inline form |
@@ -90,6 +90,32 @@ Secrets and variables → Actions → New repository secret*, name
 workflow passes it to the prerender step. Without it the forms render as a
 call / email fallback and the deploy logs a warning. CI builds use a dummy key
 and the browser tests intercept every POST, so tests never send a real lead.
+
+## Contact widget and DMS chat
+
+Every page has one floating contact bubble, bottom-right
+(`contactWidget()` in `script/lib/layout.ts`, behaviour in
+`src/client/contact-widget.ts`). It expands into three options:
+
+| Option | Action |
+| --- | --- |
+| Send Us a Message | Opens the site-wide lead-form modal (same `data-lead-open` hook as "Get a Quote") |
+| Direct Message | Opens the Tigon DMS chat plugin |
+| Call Now | `tel:` link built from `site.phoneTel` |
+
+The DMS chat plugin is loaded on every page with the vendor's embed snippet,
+placed just before `</body>`:
+
+```html
+<script async src="https://s3.amazonaws.com/prod.docs.s3/assets/chat-plugin/chat-plugin.js"></script>
+```
+
+It renders into an open shadow root (`#chat-plugin-host`). The widget injects a
+stylesheet there that hides the plugin's own launcher bubble and callout, opens
+and closes the chat through the plugin's own controls, and mirrors its unread
+badge onto the contact bubble. If the plugin cannot load, "Direct Message"
+falls back to the contact form. The browser tests serve a stand-in for the
+plugin, so they never reach the DMS.
 
 ## Requirements
 
