@@ -49,6 +49,30 @@ node script/optimize-assets.ts --limit 40     # first 40 carts, for fast iterati
 node script/optimize-assets.ts --keep-originals
 ```
 
+## Inventory sources
+
+`script/fetch-data.ts` pulls from the **DMS** first
+(`https://api.tigondms.com/wp-website`, no key). If that fails or yields
+nothing publishable, it pulls from **TIGON IOT**
+(`https://tigoniot.com/wp-website`), which serves a daily copy of the DMS feed
+over the same paths. IOT needs the `IOT_API_KEY` repository secret. The key is
+sent only as the `x-api-key` header and never logged. A snapshot always comes
+from exactly one source. If both fail, the previous snapshot stays.
+
+A cart is shown only if it is in stock, ready for sale (`rfsStatus.isRFS`), not
+boneyard / work-in-progress / service, priced above $0, and has at least one
+real photograph. Photos are served from TIGON's public S3 bucket.
+
+**Relaxed mode** is a one-time recovery switch. Enable it with `--relaxed`, the
+`relaxed` input on a manual deploy run, or `INVENTORY_RELAXED_UNTIL=<Eastern
+date>`. In relaxed mode a later page failing keeps the pages already received,
+and `isRFS` is not required. The stock, price and photo rules still apply. The
+deploy workflow sets `INVENTORY_RELAXED_UNTIL`, so it switches itself off after
+that date.
+
+Each deploy run writes the source, counts and any errors to its run summary
+page on GitHub.
+
 ## Configuration
 
 Everything about the business lives in `src/config/site.ts` — name, phone,

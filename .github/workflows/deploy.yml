@@ -16,6 +16,10 @@ on:
         description: "Fail the build if the DMS is unreachable (no stale fallback)"
         type: boolean
         default: false
+      relaxed:
+        description: "One-time recovery: keep partial pages and do not require isRFS"
+        type: boolean
+        default: false
   schedule:
     # 00:00, 06:00, 12:00, 18:00 UTC.
     - cron: "0 */6 * * *"
@@ -90,8 +94,16 @@ jobs:
           restore-keys: |
             cart-images-
 
-      - name: Fetch inventory from the DMS
-        run: npm run fetch-data ${{ inputs.require_live && '-- --require-live' || '' }}
+      # DMS first, then the TIGON IOT recovery copy. IOT_API_KEY is a
+      # repository secret; it is sent only as the x-api-key header and is never
+      # printed. INVENTORY_RELAXED_UNTIL (an Eastern date) turns on the one-time
+      # relaxed validation and switches it off by itself once the date passes.
+      # The result, with counts, is written to this run's summary page.
+      - name: Fetch inventory (DMS, then IOT)
+        env:
+          IOT_API_KEY: ${{ secrets.IOT_API_KEY }}
+          INVENTORY_RELAXED_UNTIL: "2026-11-12"
+        run: npm run fetch-data -- ${{ inputs.require_live && '--require-live' || '' }} ${{ inputs.relaxed && '--relaxed' || '' }}
 
       - name: Generate SEO files
         run: npm run generate-seo
