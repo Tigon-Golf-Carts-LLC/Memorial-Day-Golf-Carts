@@ -108,6 +108,11 @@ function startServer(): Promise<string> {
 
 async function newPage() {
   const page = await browser.newPage();
+  // The DMS chat plugin is third-party and, on 127.0.0.1, points at a local
+  // API; serve an empty stand-in so the suite never depends on it.
+  await page.route("**/chat-plugin/chat-plugin.js", (route: any) =>
+    route.fulfill({ status: 200, contentType: "text/javascript", body: "" }),
+  );
   page.on("console", (message: any) => {
     if (message.type() === "error") consoleErrors.push(`${page.url()} :: ${message.text()}`);
   });

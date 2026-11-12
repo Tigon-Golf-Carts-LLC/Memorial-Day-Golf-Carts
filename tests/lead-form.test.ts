@@ -70,6 +70,11 @@ function startServer(): Promise<string> {
 
 /** Intercept the webhook; returns the captured request bodies. */
 async function interceptWebhook(page: any, reply: { status: number; body: unknown }) {
+  // The DMS chat plugin is third-party and, on 127.0.0.1, points at a local
+  // API; serve an empty stand-in so the suite never depends on it.
+  await page.route("**/chat-plugin/chat-plugin.js", (route: any) =>
+    route.fulfill({ status: 200, contentType: "text/javascript", body: "" }),
+  );
   const posts: string[] = [];
   await page.route("https://tigoniot.com/hooks/**", async (route: any) => {
     posts.push(route.request().postData() ?? "");

@@ -18,6 +18,23 @@
  *   - `--require-live` refuses the fallback outright, for deploys where stale
  *     inventory is not acceptable.
  *
+ * Sources (same paths and payloads, see script/lib/dms.ts):
+ *   1. DMS — tried first.
+ *   2. IOT — recovery copy, tried when the DMS pull fails or yields nothing
+ *      publishable. Needs IOT_API_KEY (a repository secret in CI).
+ *   Each snapshot comes from exactly one source; the two are never merged.
+ *
+ * Relaxed mode (one-time recovery): `--relaxed`, or INVENTORY_RELAXED_UNTIL set
+ * to an Eastern date (YYYY-MM-DD) that is today or later. It loosens exactly
+ * two rules so inventory can be restored quickly, and switches itself off once
+ * the date passes:
+ *   - a failed later page keeps the pages already collected instead of
+ *     failing the whole pull;
+ *   - rfsStatus.isRFS is not required.
+ * These rules always hold, relaxed or not: in stock, not boneyard / work in
+ * progress / service, a price above $0, and at least one real photograph.
+ * A pull with zero publishable carts never replaces the current snapshot.
+ *
  * Usage:
  *   node script/fetch-data.ts                 # live DMS pull, fallback allowed
  *   node script/fetch-data.ts --require-live  # live or bust
@@ -28,7 +45,9 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-import { getAllCarts, getStores, type DmsStore } from "./lib/dms.ts";
+import { appendFileSync } from "node:fs";
+import { getAllCarts, getStores, iotConfigured, setDmsDeadline, type DmsStore, type InventorySource } from "./lib/dms.ts";
+import { planPull, isLivePull, type PullPlan } from "./lib/schedule.ts";
 import { toSlugPart, buildCartTitle, isoStamp } from "./lib/util.ts";
 import { locations as locationSeed, toStateCode } from "../src/config/locations.ts";
 import { storeDisplayName, DMS_BASE_URL } from "../src/config/site.ts";
@@ -49,6 +68,18 @@ const PUBLIC_DATA = resolve(root, "public/data");
 const SNAPSHOT = resolve(SRC_DATA, "snapshot.json");
 
 const requireLive = process.argv.includes("--require-live");
+
+/** Today's calendar date in America/New_York (EST/EDT aware), as YYYY-MM-DD. */
+function easternDate(at = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(at);
+}
+
+const relaxedUntil = process.env.INVENTORY_RELAXED_UNTIL?.trim() ?? "";
+const relaxed =
+  process.argv.includes("--relaxed") ||
+  (/^\d{4}-\d{2}-\d{2}$/.test(relaxedUntil) && easternDate() <= relaxedUntil);
 const offline = process.argv.includes("--offline");
 /**
  * `--fixture` normalizes a raw-DMS-shaped fixture instead of calling the API.
@@ -168,8 +199,9 @@ function publicImages(raw: any): string[] {
  *            listed behind a placeholder.
  */
 function isSellable(raw: any): boolean {
-  if (raw?.rfsStatus?.isRFS !== true) return false;
+  if (!relaxed && raw?.rfsStatus?.isRFS !== true) return false;
   if (publicImages(raw).length === 0) return false;
+  if (!((resolvePrice(raw) ?? 0) > 0)) return false;
   const status = String(raw?.status ?? "").toLowerCase();
   if (NON_RETAIL_STATUS.has(status)) return false;
   if (raw?.isInBoneyard === true) return false;
@@ -180,8 +212,10 @@ function isSellable(raw: any): boolean {
 
 /** Why a record was held back, for the snapshot's audit block. */
 function exclusionReason(raw: any): string {
-  if (raw?.rfsStatus?.isRFS !== true) return "not ready for sale (isRFS false)";
+  if (raw?.isInStock === false) return "sold (isInStock false)";
+  if (!relaxed && raw?.rfsStatus?.isRFS !== true) return "not ready for sale (isRFS false)";
   if (publicImages(raw).length === 0) return "no photograph";
+  if (!((resolvePrice(raw) ?? 0) > 0)) return "no price / $0";
   return `status: ${raw?.status ?? "unknown"}`;
 }
 
@@ -467,22 +501,104 @@ function writeJson(path: string, value: unknown): number {
   return Buffer.byteLength(body);
 }
 
-async function loadLive() {
-  process.stderr.write(`Fetching stores from the DMS (${DMS_BASE_URL})...\n`);
-  const dmsStores = await getStores();
+interface LiveSource {
+  rawCarts: any[];
+  dmsStores: DmsStore[];
+  reportedTotal: number | null;
+  origin: InventorySource;
+  partialError: string | null;
+}
+
+async function loadFrom(origin: InventorySource): Promise<LiveSource> {
+  process.stderr.write(`Fetching stores from the ${origin}...\n`);
+  const dmsStores = await getStores(origin);
   process.stderr.write(`  ${Array.isArray(dmsStores) ? dmsStores.length : 0} stores\n`);
-  process.stderr.write("Fetching inventory from the DMS...\n");
-  const { carts, reportedTotal } = await getAllCarts({ pageSize: 100 });
+  process.stderr.write(`Fetching inventory from the ${origin}...\n`);
+  const { carts, reportedTotal, partialError } = await getAllCarts({ pageSize: 100, source: origin, keepPartial: relaxed });
   if (!carts.length) {
-    throw new Error("DMS returned zero inventory records — refusing to treat that as a valid catalogue");
+    throw new Error(`${origin} returned zero inventory records — refusing to treat that as a valid catalogue`);
   }
-  return { rawCarts: carts, dmsStores, reportedTotal };
+  const publishable = carts.filter(isSellable).length;
+  if (publishable === 0) {
+    throw new Error(`${origin} returned ${carts.length} records but none pass the display filter`);
+  }
+  if (!relaxed && reportedTotal !== null && carts.length < reportedTotal) {
+    throw new Error(`${origin} pagination incomplete: received ${carts.length} of ${reportedTotal} carts`);
+  }
+  return { rawCarts: carts, dmsStores, reportedTotal, origin, partialError };
+}
+
+const MAX_DECREASE_PERCENT = Number(process.env.MAX_DECREASE_PERCENT ?? 30);
+
+/** Displayed carts a pull would publish. */
+const displayedCount = (result: LiveSource) => result.rawCarts.filter(isSellable).length;
+
+/**
+ * Large-drop guard. A pull showing more than MAX_DECREASE_PERCENT fewer carts
+ * than the current live snapshot is held back unless a second, independent
+ * fetch agrees within 5%: a DMS result is checked against the IOT copy. An IOT
+ * result has nothing to confirm it in the same run, so it is held back and the
+ * next scheduled run tries again. Skipped in relaxed mode and when the current
+ * snapshot is not a real pull (the offline fixture).
+ */
+async function confirmDrop(result: LiveSource, previous: any): Promise<void> {
+  if (relaxed || !isLivePull(previous)) return;
+  const before = Number(previous?.summary?.total) || 0;
+  const now = displayedCount(result);
+  if (!before || now >= before * (1 - MAX_DECREASE_PERCENT / 100)) return;
+  const drop = `${result.origin} would show ${now} carts, down from ${before} (more than ${MAX_DECREASE_PERCENT}%)`;
+  if (result.origin === "DMS" && iotConfigured()) {
+    process.stderr.write(`[inventory] WARN ${drop} — confirming against IOT\n`);
+    const check = displayedCount(await loadFrom("IOT"));
+    if (Math.abs(check - now) <= now * 0.05) {
+      process.stderr.write(`[inventory] IOT confirms (${check} carts) — publishing the DMS result\n`);
+      return;
+    }
+    throw new Error(`${drop}; IOT shows ${check}, which does not confirm it`);
+  }
+  throw new Error(`${drop}; no second fetch to confirm it — keeping the current snapshot`);
+}
+
+/** Try the planned sources in order. Returns the first usable catalogue. */
+async function loadLive(errors: string[], plan: PullPlan, previous: any): Promise<LiveSource | null> {
+  setDmsDeadline(plan.dmsDeadline);
+  for (const origin of plan.sources as InventorySource[]) {
+    if (origin === "IOT" && !iotConfigured()) {
+      errors.push("IOT: skipped — IOT_API_KEY is not set");
+      continue;
+    }
+    try {
+      const result = await loadFrom(origin);
+      await confirmDrop(result, previous);
+      return result;
+    } catch (error) {
+      const message = (error as Error).message;
+      errors.push(`${origin}: ${message}`);
+      process.stderr.write(`\n[inventory] WARN ${origin} pull failed: ${message}\n`);
+      if (origin === "DMS" && plan.sources.includes("IOT")) {
+        process.stderr.write("[inventory] trying the IOT recovery source\n");
+      }
+    }
+  }
+  return null;
+}
+
+/** A Markdown summary on the GitHub Actions run page, when running in CI. */
+function stepSummary(markdown: string) {
+  const file = process.env.GITHUB_STEP_SUMMARY;
+  if (file) appendFileSync(file, `${markdown}\n`);
 }
 
 async function main() {
-  let source: { rawCarts: any[]; dmsStores: DmsStore[]; reportedTotal: number | null } | null = null;
+  let source: LiveSource | null = null;
   let usedFallback = false;
-  let fetchError: Error | null = null;
+  const fetchErrors: string[] = [];
+  if (relaxed) {
+    process.stderr.write(
+      `[inventory] RELAXED validation is on${relaxedUntil ? ` until ${relaxedUntil} (Eastern)` : ""}: ` +
+        "partial pages are kept and isRFS is not required.\n",
+    );
+  }
 
   if (useFixture) {
     if (requireLive) {
@@ -495,17 +611,32 @@ async function main() {
     }
     process.stderr.write(`Normalizing the offline fixture at assets-raw/dms-fixture.json (no network).\n`);
     const fixture = JSON.parse(readFileSync(FIXTURE, "utf8"));
-    source = { rawCarts: fixture.carts, dmsStores: fixture.stores, reportedTotal: fixture.carts.length };
+    source = {
+      rawCarts: fixture.carts, dmsStores: fixture.stores, reportedTotal: fixture.carts.length,
+      origin: "DMS", partialError: null,
+    };
   } else if (!offline) {
-    try {
-      source = await loadLive();
-    } catch (error) {
-      fetchError = error as Error;
+    const previous = existsSync(SNAPSHOT) ? JSON.parse(readFileSync(SNAPSHOT, "utf8")) : null;
+    const nowOverride = process.env.INVENTORY_NOW ? Date.parse(process.env.INVENTORY_NOW) : NaN;
+    const plan = planPull(Number.isFinite(nowOverride) ? nowOverride : Date.now(), previous, {
+      dmsEnabled: process.env.DMS_ENABLED !== "false",
+      iotEnabled: process.env.IOT_FALLBACK_ENABLED !== "false",
+    });
+    process.stderr.write(`[inventory] sync day ${plan.syncDate} (ET): ${plan.reason}\n`);
+    if (plan.sources.length === 0) {
+      stepSummary(`## Inventory: no pull needed\n\n${plan.reason}. The committed snapshot stays live.`);
+      process.exit(0);
+    }
+    source = await loadLive(fetchErrors, plan, previous);
+    if (!source) {
+      process.stderr.write(
+        `[inventory] CRITICAL ${plan.sources.join(" and ")} failed — keeping the snapshot from ${previous?.updatedAt ?? "?"}\n`,
+      );
     }
   }
 
   if (!source) {
-    const why = offline ? "--offline was requested" : `the DMS could not be reached: ${fetchError?.message}`;
+    const why = offline ? "--offline was requested" : `no source produced a usable catalogue (${fetchErrors.join("; ")})`;
 
     if (requireLive) {
       process.stderr.write(
@@ -540,6 +671,12 @@ async function main() {
         `Inventory shown on the site may be stale. Re-run the refresh workflow once the DMS is reachable.\n` +
         `${"!".repeat(72)}\n`,
     );
+    stepSummary(
+      `## ⚠️ Inventory NOT refreshed\n\n` +
+        `The site keeps the committed snapshot from **${previous.updatedAt}** ` +
+        `(source \`${previous.source}\`, ${previous.summary?.total ?? "?"} carts).\n\n` +
+        fetchErrors.map((line) => `- ${line}`).join("\n"),
+    );
     process.exit(0);
   }
 
@@ -563,6 +700,15 @@ async function main() {
     );
   }
 
+  const statusCounts: Record<string, number> = {};
+  for (const raw of source.rawCarts) {
+    const status = String(raw?.status ?? "(none)");
+    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+  }
+  process.stderr.write(
+    `Status values seen: ${Object.entries(statusCounts).map(([key, count]) => `${key}=${count}`).join(", ")}\n`,
+  );
+
   const carts = assignSlugs(sellable.map((raw) => normalizeCart(raw, storeById)));
   for (const cart of carts) cart.search = buildSearchIndex(cart);
 
@@ -582,14 +728,19 @@ async function main() {
   const facets = buildFacets(carts);
   const summary = summarize(carts);
   const updatedAt = isoStamp();
+  const liveLabel = useFixture ? "dms-fixture" : source.origin === "IOT" ? "iot-live" : "dms-live";
 
   /* --- write ----------------------------------------------------------- */
 
   const snapshot = {
     updatedAt,
-    source: useFixture ? "dms-fixture" : "dms-live",
+    source: liveLabel,
     dms: { baseUrl: DMS_BASE_URL },
     fetch: {
+      origin: source.origin,
+      relaxed,
+      partialError: source.partialError,
+      statusCounts,
       rawRecordsFetched: source.rawCarts.length,
       reportedTotal: source.reportedTotal,
       published: carts.length,
@@ -652,7 +803,7 @@ async function main() {
   written.push(["public/data/facets.json", writeJson(resolve(PUBLIC_DATA, "facets.json"), { updatedAt, facets })]);
   written.push([
     "public/data/meta.json",
-    writeJson(resolve(PUBLIC_DATA, "meta.json"), { updatedAt, source: "dms-live", summary }),
+    writeJson(resolve(PUBLIC_DATA, "meta.json"), { updatedAt, source: liveLabel, summary }),
   ]);
 
   /* --- report ---------------------------------------------------------- */
@@ -672,6 +823,20 @@ async function main() {
   process.stderr.write(`\nFields dropped from the snapshot (never read by the frontend):\n`);
   for (const field of DROPPED_FIELDS) process.stderr.write(`  - ${field}\n`);
   if (usedFallback) process.stderr.write("\nNOTE: built from the committed fallback snapshot.\n");
+
+  stepSummary(
+    `## ✅ Inventory refreshed from the ${source.origin}\n\n` +
+      (relaxed ? `> Relaxed validation was on${relaxedUntil ? ` (until ${relaxedUntil} ET)` : ""}.\n\n` : "") +
+      `| | |\n|---|---|\n` +
+      `| Source total (totalCarts) | ${source.reportedTotal ?? "?"} |\n` +
+      `| Records received | ${source.rawCarts.length} |\n` +
+      Object.entries(exclusionReasons).map(([key, count]) => `| Excluded — ${key} | ${count} |\n`).join("") +
+      `| **Displayed** | **${carts.length}** (${summary.new} new, ${summary.used} used) |\n` +
+      `| Photos | ${summary.photoCount} |\n` +
+      (source.partialError ? `| Partial pull | ${source.partialError} |\n` : "") +
+      (fetchErrors.length ? `\nEarlier failures:\n${fetchErrors.map((line) => `- ${line}`).join("\n")}\n` : "") +
+      `\nStatus values seen: ${Object.entries(statusCounts).map(([key, count]) => `\`${key}\`=${count}`).join(", ")}\n`,
+  );
 }
 
 /**

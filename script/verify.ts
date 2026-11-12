@@ -324,7 +324,12 @@ function main() {
   record("every page carries the tel: link", missingTel === 0, `${missingTel} missing`);
   record("every page shows the phone number as text", missingPhone === 0, `${missingPhone} missing`);
   record("phone in schema matches the tel: href", /"telephone":\s*"\+18444562228"/.test(home), "");
-  record("sticky mobile call button present", /class="sticky-call"/.test(home), "");
+  record(
+    "floating contact widget present with a tel: Call Now option",
+    /data-contact-widget/.test(home) && new RegExp(`href="tel:\\+1${phoneDigits}" data-contact-action="call"`).test(home),
+    "",
+  );
+  record("DMS chat plugin loaded on every page", htmlFiles.every((file) => readFileSync(resolve(DIST, file), "utf8").includes("chat-plugin/chat-plugin.js")), "");
 
   /* --- 11. forms ------------------------------------------------------- */
 
