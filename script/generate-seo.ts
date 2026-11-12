@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-import { site, salesEvent, keywords } from "../src/config/site.ts";
+import { site, salesEvent, keywords, S3_CARTS_URL } from "../src/config/site.ts";
 import { guides } from "../src/config/guides.ts";
 import { faq } from "../src/config/faq.ts";
 import { absoluteUrl, xmlEsc, isoStamp, isoDate, SITE_ORIGIN, formatPrice } from "./lib/util.ts";
@@ -321,9 +321,11 @@ function main() {
       priority: route.priority,
       images: cart
         ? cart.images.slice(0, 6).map((_: string, index: number) => ({
-            loc: absoluteUrl(
-              `images/carts/${photoStem(cart.slug, index)}-${index === 0 ? PRIMARY_WIDTHS[PRIMARY_WIDTHS.length - 1] : 800}.webp`,
-            ),
+            // The primary photo is optimized and served from this site; gallery
+            // photos are served straight from TIGON's public S3 bucket.
+            loc: index === 0
+              ? absoluteUrl(`images/carts/${photoStem(cart.slug, 0)}-${PRIMARY_WIDTHS[PRIMARY_WIDTHS.length - 1]}.webp`)
+              : S3_CARTS_URL + String(cart.images[index]).replace(/^\/+/, ""),
             title: [cart.year, cart.title].filter(Boolean).join(" "),
             caption: `${cart.condition === "used" ? "Used" : "New"} ${[cart.year, cart.makeLabel, cart.modelLabel].filter(Boolean).join(" ")} golf cart for sale in ${cart.city}, ${cart.stateCode}`,
           }))

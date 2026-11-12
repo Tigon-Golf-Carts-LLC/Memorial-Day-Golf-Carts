@@ -204,8 +204,11 @@ function main() {
   record("every sitemap URL is self-canonical", aliasInSitemap.length === 0, `${aliasInSitemap.length} point elsewhere`);
 
   const sitemapImages = [...sitemap.matchAll(/<image:loc>([^<]+)<\/image:loc>/g)].map((match) => match[1]);
-  const missingSitemapImages = sitemapImages.filter((url) => !fileFor(url, files));
-  record("every sitemap image resolves", missingSitemapImages.length === 0, `${missingSitemapImages.length} of ${sitemapImages.length} missing`);
+  // Gallery photos are listed at their S3 URL; only this site's own images can
+  // be checked against dist/.
+  const localSitemapImages = sitemapImages.filter((url) => !/s3\.amazonaws\.com/.test(url));
+  const missingSitemapImages = localSitemapImages.filter((url) => !fileFor(url, files));
+  record("every local sitemap image resolves", missingSitemapImages.length === 0, `${missingSitemapImages.length} of ${localSitemapImages.length} missing`);
 
   /* --- 6. robots ------------------------------------------------------- */
 
@@ -222,13 +225,11 @@ function main() {
   const cartImgs = homeImgs.filter((tag) => tag.includes("images/carts/"));
   record("cart images on the home page use srcset", cartImgs.length > 0 && cartImgs.every((tag) => tag.includes("srcset=")), `${cartImgs.length} cart images`);
   record("cart images are WebP", cartImgs.every((tag) => /\.webp/.test(tag)), "");
-  // AVIF ships on the vehicle-detail hero, where the decode cost is paid once.
-  // Grid cards are deliberately plain WebP so the LCP candidate has no source
-  // list to resolve first.
+  // The vehicle hero is the optimized primary photo (WebP srcset). AVIF is off
+  // by default to keep the site under the GitHub Pages size limit.
   const detailSample = htmlFiles.find((file) => file.startsWith("golfcart/"));
   const detailHtml = detailSample ? readFileSync(resolve(DIST, detailSample), "utf8") : "";
-  record("vehicle detail page emits an AVIF source", /type="image\/avif"/.test(detailHtml), detailSample ?? "no detail page");
-  record("AVIF derivatives exist in the build", fileList.some((file) => file.endsWith(".avif")), `${fileList.filter((file) => file.endsWith(".avif")).length} files`);
+  record("vehicle detail hero is an optimized WebP srcset", /<img[^>]+images\/carts\/[^"]+-1200\.webp"[^>]*srcset=/.test(detailHtml), detailSample ?? "no detail page");
   record("no original JPEG from S3 on the home page", !/s3\.amazonaws\.com/.test(home.replace(/<link rel="preconnect"[^>]*>/g, "")), "");
 
   const allImgs: string[] = [];
