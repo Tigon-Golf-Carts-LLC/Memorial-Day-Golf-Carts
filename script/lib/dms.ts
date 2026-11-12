@@ -39,6 +39,15 @@ function authHeaders(source: InventorySource): Record<string, string> {
   return { "x-api-key": key };
 }
 
+/**
+ * DMS requests may not start at or after this instant (5:00 AM ET). Checked
+ * before every request, page and retry; a request's timeout never runs past it.
+ */
+let dmsDeadline = Number.POSITIVE_INFINITY;
+export function setDmsDeadline(at: number) {
+  dmsDeadline = at;
+}
+
 /** Status codes that will not get better by asking again. */
 const NO_RETRY = new Set([400, 401, 403, 404]);
 
@@ -67,8 +76,16 @@ async function request<T>(source: InventorySource, endpoint: string, body?: unkn
       process.stderr.write(`  retry ${attempt}/${RETRIES} for ${endpoint} in ${wait}ms\n`);
       await new Promise((resolve) => setTimeout(resolve, wait));
     }
+    let timeout = TIMEOUT_MS;
+    if (source === "DMS") {
+      const left = dmsDeadline - Date.now();
+      if (left <= 0) {
+        throw new DmsError("5:00 AM ET cutoff reached — no DMS request sent", endpoint, attempt);
+      }
+      timeout = Math.min(TIMEOUT_MS, left);
+    }
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeout);
     try {
       const response = await fetch(url, {
         method: body ? "POST" : "GET",

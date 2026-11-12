@@ -35,7 +35,7 @@ component state is derived from it and never the reverse.
 | `npm run build` | fetch-data → generate-seo → optimize-assets → vite build → prerender |
 | `npm run build:site` | Same, skipping the network fetch (uses the committed snapshot) |
 | `npm run preview` | Serve `dist/` the way a static host does |
-| `npm test` | Filter unit tests + browser tests (63 tests) |
+| `npm test` | Filter unit tests + browser tests (74 tests) |
 | `npm run budget` | Size table, 20 largest files, budget gate |
 | `npm run verify` | 54 checks against the built output |
 
@@ -72,6 +72,26 @@ that date.
 
 Each deploy run writes the source, counts and any errors to its run summary
 page on GitHub.
+
+### Daily schedule
+
+`script/lib/schedule.ts` decides on every deploy run whether to pull:
+
+| When (Eastern) | What runs |
+| --- | --- |
+| 12–1 AM, 1–2 AM | DMS. If it fails, wait for the next hourly run |
+| 2–3 AM (3rd attempt) | DMS, then IOT straight away if the DMS fails |
+| Later in the window | IOT. There is never a 4th DMS attempt, and none starts with under 15 min left |
+| 5 AM onward, no pull yet today | IOT recovery |
+| Already pulled today | Nothing. The build reuses the saved snapshot |
+
+The 5:00 AM cutoff is checked before every DMS request, and a request's timeout
+never runs past it. A successful pull is committed back to `main`, so it
+survives the next build. A pull whose displayed count drops by more than 30% is
+held back unless the other source confirms it within 5%. The cron runs hourly
+from 04:00 to 07:00 UTC, plus three daytime checks. Attempt numbers come from
+the real time since midnight ET, so DST (including November's repeated 1 AM)
+needs no cron change. `tests/schedule.test.ts` covers these rules.
 
 ## Configuration
 

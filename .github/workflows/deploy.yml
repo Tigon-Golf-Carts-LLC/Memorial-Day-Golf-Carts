@@ -3,10 +3,17 @@ name: Deploy to GitHub Pages
 # Triggers:
 #   push to main        — deploy whatever was merged
 #   workflow_dispatch   — deploy or refresh inventory on demand
-#   schedule            — refresh the inventory snapshot from the live DMS
+#   schedule            — the daily inventory pull
 #
-# Inventory is frozen into the build, so the cron is what keeps it current.
-# Every 6 hours means a cart that sells is off the site within 6 hours at worst.
+# Inventory is frozen into the build. script/lib/schedule.ts decides, on every
+# run, whether to pull and from where:
+#   - DMS only between 12:00 and 5:00 AM Eastern, at most 3 attempts a day;
+#   - TIGON IOT as recovery after the 3rd DMS attempt, or any time after
+#     5:00 AM while the day has no successful pull;
+#   - once a day: after a successful pull, later runs that day rebuild from the
+#     saved snapshot without calling either source.
+# A successful pull is committed back to main (src/data, public/data), so the
+# next build keeps the last good snapshot and knows today is done.
 on:
   push:
     branches: [main]
@@ -21,11 +28,17 @@ on:
         type: boolean
         default: false
   schedule:
-    # 00:00, 06:00, 12:00, 18:00 UTC.
-    - cron: "0 */6 * * *"
+    # Hourly through the overnight window. 04–07 UTC covers 12, 1 and 2 AM
+    # Eastern in both EST and EDT; the schedule module works out which run is
+    # which DMS attempt from the real clock, so DST needs no cron change.
+    - cron: "17 4-7 * * *"
+    # Daytime IOT recovery checks (7 AM, 11 AM, 4 PM EST). They do nothing if
+    # today already has a successful pull.
+    - cron: "17 12,16,21 * * *"
 
 permissions:
-  contents: read
+  # write: a successful pull is committed back to main (see the last build step).
+  contents: write
   pages: write
   id-token: write
 
@@ -102,7 +115,7 @@ jobs:
       - name: Fetch inventory (DMS, then IOT)
         env:
           IOT_API_KEY: ${{ secrets.IOT_API_KEY }}
-          INVENTORY_RELAXED_UNTIL: "2026-11-12"
+          INVENTORY_RELAXED_UNTIL: "2026-11-13"
         run: npm run fetch-data -- ${{ inputs.require_live && '--require-live' || '' }} ${{ inputs.relaxed && '--relaxed' || '' }}
 
       - name: Generate SEO files
@@ -137,6 +150,27 @@ jobs:
 
       - name: Run the filter tests
         run: npm test
+
+      # Persist a successful pull: the committed snapshot is this site's only
+      # store, so the next build serves it and the schedule sees today is done.
+      # Pushes made with GITHUB_TOKEN do not start another workflow run.
+      - name: Save the inventory snapshot
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          if git diff --quiet -- src/data public/data; then
+            echo "Snapshot unchanged — nothing to save."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data public/data
+          git commit -m "Inventory snapshot $(node -p "require('./src/data/snapshot.json').source + ' ' + require('./src/data/snapshot.json').updatedAt")"
+          for attempt in 1 2 3; do
+            git pull --rebase --quiet origin main && git push origin HEAD:main && exit 0
+            sleep $((attempt * 5))
+          done
+          echo "::warning::Could not save the snapshot to main — the next run may pull again."
 
       - name: Upload the Pages artifact
         uses: actions/upload-pages-artifact@v3

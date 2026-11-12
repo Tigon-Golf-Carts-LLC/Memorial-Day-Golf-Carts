@@ -46,7 +46,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import { appendFileSync } from "node:fs";
-import { getAllCarts, getStores, iotConfigured, type DmsStore, type InventorySource } from "./lib/dms.ts";
+import { getAllCarts, getStores, iotConfigured, setDmsDeadline, type DmsStore, type InventorySource } from "./lib/dms.ts";
+import { planPull, isLivePull, type PullPlan } from "./lib/schedule.ts";
 import { toSlugPart, buildCartTitle, isoStamp } from "./lib/util.ts";
 import { locations as locationSeed, toStateCode } from "../src/config/locations.ts";
 import { storeDisplayName, DMS_BASE_URL } from "../src/config/site.ts";
@@ -527,21 +528,56 @@ async function loadFrom(origin: InventorySource): Promise<LiveSource> {
   return { rawCarts: carts, dmsStores, reportedTotal, origin, partialError };
 }
 
-/** DMS first, then IOT. Returns the first source that yields a usable catalogue. */
-async function loadLive(errors: string[]): Promise<LiveSource | null> {
-  const order: InventorySource[] = process.env.DMS_ENABLED === "false" ? ["IOT"] : ["DMS", "IOT"];
-  for (const origin of order) {
+const MAX_DECREASE_PERCENT = Number(process.env.MAX_DECREASE_PERCENT ?? 30);
+
+/** Displayed carts a pull would publish. */
+const displayedCount = (result: LiveSource) => result.rawCarts.filter(isSellable).length;
+
+/**
+ * Large-drop guard. A pull showing more than MAX_DECREASE_PERCENT fewer carts
+ * than the current live snapshot is held back unless a second, independent
+ * fetch agrees within 5%: a DMS result is checked against the IOT copy. An IOT
+ * result has nothing to confirm it in the same run, so it is held back and the
+ * next scheduled run tries again. Skipped in relaxed mode and when the current
+ * snapshot is not a real pull (the offline fixture).
+ */
+async function confirmDrop(result: LiveSource, previous: any): Promise<void> {
+  if (relaxed || !isLivePull(previous)) return;
+  const before = Number(previous?.summary?.total) || 0;
+  const now = displayedCount(result);
+  if (!before || now >= before * (1 - MAX_DECREASE_PERCENT / 100)) return;
+  const drop = `${result.origin} would show ${now} carts, down from ${before} (more than ${MAX_DECREASE_PERCENT}%)`;
+  if (result.origin === "DMS" && iotConfigured()) {
+    process.stderr.write(`[inventory] WARN ${drop} — confirming against IOT\n`);
+    const check = displayedCount(await loadFrom("IOT"));
+    if (Math.abs(check - now) <= now * 0.05) {
+      process.stderr.write(`[inventory] IOT confirms (${check} carts) — publishing the DMS result\n`);
+      return;
+    }
+    throw new Error(`${drop}; IOT shows ${check}, which does not confirm it`);
+  }
+  throw new Error(`${drop}; no second fetch to confirm it — keeping the current snapshot`);
+}
+
+/** Try the planned sources in order. Returns the first usable catalogue. */
+async function loadLive(errors: string[], plan: PullPlan, previous: any): Promise<LiveSource | null> {
+  setDmsDeadline(plan.dmsDeadline);
+  for (const origin of plan.sources as InventorySource[]) {
     if (origin === "IOT" && !iotConfigured()) {
       errors.push("IOT: skipped — IOT_API_KEY is not set");
       continue;
     }
     try {
-      return await loadFrom(origin);
+      const result = await loadFrom(origin);
+      await confirmDrop(result, previous);
+      return result;
     } catch (error) {
       const message = (error as Error).message;
       errors.push(`${origin}: ${message}`);
       process.stderr.write(`\n[inventory] WARN ${origin} pull failed: ${message}\n`);
-      if (origin === "DMS") process.stderr.write("[inventory] trying the IOT recovery source\n");
+      if (origin === "DMS" && plan.sources.includes("IOT")) {
+        process.stderr.write("[inventory] trying the IOT recovery source\n");
+      }
     }
   }
   return null;
@@ -580,7 +616,23 @@ async function main() {
       origin: "DMS", partialError: null,
     };
   } else if (!offline) {
-    source = await loadLive(fetchErrors);
+    const previous = existsSync(SNAPSHOT) ? JSON.parse(readFileSync(SNAPSHOT, "utf8")) : null;
+    const nowOverride = process.env.INVENTORY_NOW ? Date.parse(process.env.INVENTORY_NOW) : NaN;
+    const plan = planPull(Number.isFinite(nowOverride) ? nowOverride : Date.now(), previous, {
+      dmsEnabled: process.env.DMS_ENABLED !== "false",
+      iotEnabled: process.env.IOT_FALLBACK_ENABLED !== "false",
+    });
+    process.stderr.write(`[inventory] sync day ${plan.syncDate} (ET): ${plan.reason}\n`);
+    if (plan.sources.length === 0) {
+      stepSummary(`## Inventory: no pull needed\n\n${plan.reason}. The committed snapshot stays live.`);
+      process.exit(0);
+    }
+    source = await loadLive(fetchErrors, plan, previous);
+    if (!source) {
+      process.stderr.write(
+        `[inventory] CRITICAL ${plan.sources.join(" and ")} failed — keeping the snapshot from ${previous?.updatedAt ?? "?"}\n`,
+      );
+    }
   }
 
   if (!source) {
