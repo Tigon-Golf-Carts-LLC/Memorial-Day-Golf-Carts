@@ -4,10 +4,16 @@
  *
  * Processes every image the site ships:
  *
- *   1. Cart photography, pulled from the DMS S3 bucket by filename. Cropped to
- *      a fixed 4:3 landscape box and encoded to WebP at responsive widths.
- *      The primary photo of each cart also gets AVIF, because that is the LCP
- *      candidate and the only place AVIF's much slower encode pays for itself.
+ *   1. Cart photography, pulled from the DMS S3 bucket by filename. Only the
+ *      PRIMARY photo of each cart is optimized: it is the card thumbnail, the
+ *      vehicle hero and the share image, and listing pages load dozens of
+ *      them. Gallery photos are served straight from TIGON's public S3 bucket
+ *      (the page falls back to the original URL when there is no derivative).
+ *      Optimizing every gallery photo took the site past GitHub Pages' size
+ *      limit once the live catalogue (3,400+ photos) arrived.
+ *      AVIF is off by default for the same reason; CART_AVIF=1 turns it on.
+ *      Derivatives no longer referenced by the current snapshot are deleted,
+ *      so the restored image cache cannot grow without bound.
  *   2. Site imagery under src/assets (SVG through SVGO) and public/ (PNG
  *      losslessly recompressed, EXIF stripped).
  *
@@ -27,7 +33,7 @@
  *   node script/optimize-assets.ts --keep-originals
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, readdirSync, unlinkSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join, extname, basename } from "node:path";
 import sharp from "sharp";
@@ -36,7 +42,7 @@ import { optimize as svgoOptimize } from "svgo";
 import { S3_CARTS_URL } from "../src/config/site.ts";
 import { toSlugPart, isoStamp } from "./lib/util.ts";
 import { type ImageManifest, type ImageEntry } from "./lib/images.ts";
-import { photoStem as sharedPhotoStem, PRIMARY_WIDTHS, GALLERY_WIDTHS, CART_ASPECT } from "../src/lib/photo-path.ts";
+import { photoStem as sharedPhotoStem, PRIMARY_WIDTHS, CART_ASPECT } from "../src/lib/photo-path.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SNAPSHOT = resolve(root, "src/data/snapshot.json");
@@ -147,11 +153,16 @@ interface PhotoJob {
   wantAvif: boolean;
 }
 
-async function processPhoto(job: PhotoJob, manifest: ImageManifest): Promise<void> {
-  const outputs = job.widths.flatMap((width) => [
+/** The derivative files one photo job produces. */
+function outputsFor(job: PhotoJob) {
+  return job.widths.flatMap((width) => [
     { path: join(CART_OUT, `${job.stem}-${width}.webp`), width, format: "webp" as const },
     ...(job.wantAvif ? [{ path: join(CART_OUT, `${job.stem}-${width}.avif`), width, format: "avif" as const }] : []),
   ]);
+}
+
+async function processPhoto(job: PhotoJob, manifest: ImageManifest): Promise<void> {
+  const outputs = outputsFor(job);
 
   const entry: ImageEntry = {
     base: `images/carts/${job.stem}`,
@@ -355,15 +366,13 @@ async function main() {
     const carts = Number.isFinite(LIMIT) ? snapshot.carts.slice(0, LIMIT) : snapshot.carts;
     const jobs: PhotoJob[] = [];
     for (const cart of carts) {
-      cart.images.forEach((filename: string, index: number) => {
-        jobs.push({
-          filename,
-          stem: photoStem(cart, index),
-          // The primary photo carries the card, the hero and the OG card, so it
-          // gets the extra width and the AVIF encode. Gallery shots do not.
-          widths: index === 0 ? [...PRIMARY_WIDTHS] : [...GALLERY_WIDTHS],
-          wantAvif: index === 0,
-        });
+      const filename = cart.images[0];
+      if (!filename) continue;
+      jobs.push({
+        filename,
+        stem: photoStem(cart, 0),
+        widths: [...PRIMARY_WIDTHS],
+        wantAvif: process.env.CART_AVIF === "1",
       });
     }
     process.stderr.write(
@@ -371,6 +380,7 @@ async function main() {
         `(concurrency ${CONCURRENCY}, WebP q${WEBP_QUALITY}, 4:3 crop)\n`,
     );
     await runPool(jobs, manifest);
+    if (!Number.isFinite(LIMIT)) pruneStaleDerivatives(jobs);
   }
 
   process.stderr.write("Optimizing site assets (SVGO, PNG recompression)...\n");
@@ -379,6 +389,22 @@ async function main() {
 
   writeJsonManifest(manifest);
   report();
+}
+
+/**
+ * Delete derivatives the current snapshot no longer uses: photos of sold carts,
+ * gallery shots from before gallery photos moved to S3, AVIF when it is off.
+ * The CI image cache restores yesterday's folder, so without this it only grows.
+ */
+function pruneStaleDerivatives(jobs: PhotoJob[]) {
+  const keep = new Set(jobs.flatMap((job) => outputsFor(job).map((output) => basename(output.path))));
+  let removed = 0;
+  for (const file of readdirSync(CART_OUT)) {
+    if (keep.has(file)) continue;
+    unlinkSync(join(CART_OUT, file));
+    removed += 1;
+  }
+  process.stderr.write(`  pruned ${removed} stale derivatives\n`);
 }
 
 function writeJsonManifest(manifest: ImageManifest) {
