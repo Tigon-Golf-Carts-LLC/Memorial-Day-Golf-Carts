@@ -210,7 +210,8 @@ small, .note { font-size: 0.875rem; color: var(--muted); }
   min-height: var(--header-h);
 }
 .brand { flex: 0 0 auto; display: flex; align-items: center; }
-.brand img { height: 34px; width: auto; }
+.brand picture { display: block; }
+.brand img { height: 44px; width: auto; }
 
 .site-nav { margin-left: auto; }
 .site-nav ul {
@@ -233,11 +234,15 @@ small, .note { font-size: 0.875rem; color: var(--muted); }
 .site-nav a:hover { background: var(--navy-soft); color: var(--navy); }
 .site-nav a[aria-current="page"] { color: var(--red); background: var(--red-soft); }
 
-.site-header__cta { display: flex; align-items: center; gap: 10px; }
-/* The header quote button only shows where it does not crowd the phone CTA:
-   wide screens, and tablets once the nav has collapsed into the toggle. */
+/* The CTAs never shrink: the phone number must stay on one line. */
+.site-header__cta { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; margin-left: auto; }
+/* "Get a Quote" shows only on tablets, where the nav has collapsed into the
+   toggle and there is room. With the full nav it would push the phone number
+   onto two lines, and the floating contact bubble already offers the form.
+   The selector is doubled so it outranks the later .btn display rule. */
 .btn--quote { white-space: nowrap; }
-@media (min-width: 1081px) and (max-width: 1439px) { .btn--quote { display: none; } }
+.site-header__cta .btn--quote { display: none; }
+@media (min-width: 721px) and (max-width: 1279px) { .site-header__cta .btn--quote { display: inline-flex; } }
 
 .nav-toggle {
   display: none;
@@ -268,9 +273,28 @@ small, .note { font-size: 0.875rem; color: var(--muted); }
   text-decoration: none;
 }
 
-@media (max-width: 1080px) {
+/* The full nav fits beside the logo and the phone number from 1280px up. */
+@media (max-width: 1279px) {
   .site-nav { display: none; }
   .nav-toggle { display: block; }
+}
+/* Phones: a smaller logo and a compact call button, so the number still fits
+   on one line next to the menu toggle. Below 360px only the icon remains; the
+   button keeps an aria-label with the number, and the contact bubble shows it. */
+@media (max-width: 560px) {
+  .site-header__inner { gap: 10px; }
+  .site-header__cta { gap: 8px; }
+  .brand img { height: 32px; }
+  .site-header .btn--call { padding: 10px 12px; font-size: 0.9rem; }
+  .site-header .btn--call .btn__icon { display: none; }
+}
+@media (max-width: 389px) {
+  .brand img { height: 28px; }
+  .site-header .btn--call { padding: 10px; font-size: 0.85rem; }
+}
+@media (max-width: 359px) {
+  .site-header .btn--call .btn__icon { display: inline-flex; }
+  .site-header .btn--call .btn__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 
 /* -------------------------------------------------------------- buttons --- */
@@ -305,7 +329,8 @@ small, .note { font-size: 0.875rem; color: var(--muted); }
 .btn--icon { padding-inline: 14px; }
 .btn__icon { display: inline-flex; }
 .btn__icon svg { width: 17px; height: 17px; }
-.btn--call .btn__label { font-variant-numeric: tabular-nums; }
+.btn--call { flex: 0 0 auto; white-space: nowrap; }
+.btn--call .btn__label { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 @media (prefers-color-scheme: dark) {
   .btn--primary { color: var(--navy-deep); }
@@ -1104,6 +1129,13 @@ small, .note { font-size: 0.875rem; color: var(--muted); }
   display: grid;
   gap: clamp(24px, 3vw, 40px);
   grid-template-columns: minmax(240px, 1.4fr) repeat(auto-fit, minmax(168px, 1fr));
+}
+/* Phones: the brand block full width, link columns two-up beneath it. The
+   desktop minimums (240px + 168px) are wider than a phone. */
+@media (max-width: 560px) {
+  .site-footer__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site-footer__brand { grid-column: 1 / -1; }
+  .site-footer__col a { overflow-wrap: anywhere; }
 }
 .site-footer h2 {
   margin-bottom: 0.8em;

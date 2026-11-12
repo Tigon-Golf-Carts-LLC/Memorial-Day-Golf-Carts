@@ -1,30 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 160" role="img" aria-label="Independence Day Golf Carts">
-  <title>Independence Day Golf Carts</title>
-  <g transform="translate(4 8) scale(0.2812)">
-    <path d="M256 20 462 86v170c0 106-84 189-206 236C134 445 50 362 50 256V86z" fill="#0A1F45"/>
-    <path d="M256 20 462 86v170c0 106-84 189-206 236C134 445 50 362 50 256V86z" fill="none" stroke="#ffffff" stroke-width="16"/>
-    <clipPath id="dclip"><path d="M256 36 446 97v159c0 98-78 175-190 219C144 431 66 354 66 256V97z"/></clipPath>
-    <g clip-path="url(#dclip)">
-      <rect x="60" y="286" width="400" height="30" fill="#E4405F"/>
-      <rect x="60" y="346" width="400" height="30" fill="#E4405F"/>
-      <rect x="60" y="406" width="400" height="30" fill="#E4405F"/>
-      <rect x="60" y="316" width="400" height="30" fill="#ffffff"/>
-      <rect x="60" y="376" width="400" height="30" fill="#ffffff"/>
-    </g>
-    <g fill="#ffffff">
-      <path d="M256 84l13.6 27.5 30.4 4.4-22 21.4 5.2 30.3L256 153.3l-27.2 14.3 5.2-30.3-22-21.4 30.4-4.4z"/>
-      <path d="M150 246h34l16-38h96l14 38h44a10 10 0 0 1 10 10v42a10 10 0 0 1-10 10h-16a30 30 0 0 0-60 0h-52a30 30 0 0 0-60 0h-16a10 10 0 0 1-10-10v-42a10 10 0 0 1 10-10zm60-30-9 26h84l-9-26z"/>
-      <rect x="188" y="182" width="10" height="66" rx="5"/><rect x="312" y="182" width="10" height="66" rx="5"/>
-      <rect x="172" y="170" width="166" height="15" rx="7"/>
-    </g>
-    <g fill="#E4405F"><circle cx="202" cy="330" r="24"/><circle cx="314" cy="330" r="24"/></g>
-    <g fill="#ffffff"><circle cx="202" cy="330" r="9"/><circle cx="314" cy="330" r="9"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 160" role="img" aria-label="Memorial Day Golf Carts">
+  <title>Memorial Day Golf Carts</title>
+  <defs>
+    <clipPath id="dc"><circle cx="80" cy="80" r="66"/></clipPath>
+  </defs>
+  <circle cx="80" cy="80" r="78" fill="#0A3161"/>
+  <circle cx="80" cy="80" r="70" fill="none" stroke="#ffffff" stroke-width="5"/>
+  <g clip-path="url(#dc)">
+    <rect x="0" y="124" width="160" height="40" fill="#B31942"/>
+    <rect x="0" y="119" width="160" height="5" fill="#ffffff"/>
   </g>
-  <g font-family="'Barlow Condensed','Arial Narrow',Impact,sans-serif" font-weight="700">
-    <text x="164" y="62" font-size="46" letter-spacing="1.5" fill="#FF5A78">INDEPENDENCE DAY</text>
-    <text x="164" y="112" font-size="46" letter-spacing="6" fill="#ffffff">GOLF CARTS</text>
+  <path fill="#ffffff" d="M80 20l3.8 7.9 8.7 1.2-6.3 6.1 1.5 8.6L80 39.7l-7.7 4.1 1.5-8.6-6.3-6.1 8.7-1.2z"/>
+  <g fill="#ffffff">
+    <rect x="40" y="52" width="80" height="7" rx="3.5"/>
+    <rect x="46" y="56" width="5" height="36" rx="2"/>
+    <path d="M110 56h5l6 36h-5z"/>
+    <rect x="58" y="72" width="8" height="20" rx="2"/>
+    <path d="M40 90H122a6 6 0 0 1 6 6v12a6 6 0 0 1-6 6h-2a12 12 0 0 0-24 0H72a12 12 0 0 0-24 0h-8a6 6 0 0 1-6-6V96a6 6 0 0 1 6-6z"/>
   </g>
-  <rect x="164" y="126" width="150" height="7" fill="#E4405F"/>
-  <rect x="322" y="126" width="150" height="7" fill="#7FA0D8"/>
-  <text x="164" y="152" font-family="'Barlow','Helvetica Neue',Arial,sans-serif" font-size="18" letter-spacing="3.4" fill="#9DB2D6">THE JULY 4TH SALES EVENT</text>
+  <g fill="#ffffff"><circle cx="60" cy="114" r="10"/><circle cx="108" cy="114" r="10"/></g>
+  <g fill="#0A3161"><circle cx="60" cy="114" r="4"/><circle cx="108" cy="114" r="4"/></g>
+  <g font-family="Inter,'Segoe UI','Helvetica Neue',Arial,sans-serif" font-weight="800">
+    <text x="180" y="74" font-size="74" fill="#FF6B85" textLength="576" lengthAdjust="spacingAndGlyphs">MEMORIAL DAY</text>
+    <text x="180" y="156" font-size="74" fill="#ffffff" textLength="576" lengthAdjust="spacing">GOLF CARTS</text>
+  </g>
+  <rect x="182" y="90" width="282" height="7" rx="2" fill="#FF6B85"/>
+  <rect x="472" y="90" width="284" height="7" rx="2" fill="#ffffff"/>
 </svg>
+

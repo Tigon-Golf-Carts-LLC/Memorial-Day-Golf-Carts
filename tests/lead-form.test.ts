@@ -159,7 +159,9 @@ describe("TIGON lead forms in a browser", { skip: skipReason || false }, () => {
     const posts = await interceptWebhook(page, { status: 200, body: { ok: true } });
     await page.goto(`${origin}/?utm_source=facebook&utm_medium=social`);
     await page.goto(`${origin}/financing/?utm_source=later`);
-    await page.locator('[data-testid="button-header-quote"]').click();
+    // On desktop the form is reached through the floating contact bubble.
+    await page.locator('[data-testid="button-contact-widget"]').click();
+    await page.locator('[data-testid="button-contact-message"]').click();
     const form = page.locator('[data-testid="form-lead-modal-form"]');
     await form.locator('[name="first_name"]').fill("Jane");
     await form.locator('[name="last_name"]').fill("Sample");
