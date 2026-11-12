@@ -20,7 +20,11 @@ const DIST = resolve(root, "dist");
 const BUDGET = {
   singleFileWarn: 25 * 1024 * 1024,
   singleFileHard: 100 * 1024 * 1024,
-  distHard: 500 * 1024 * 1024,
+  // GitHub Pages caps a published site at 1 GB. The live catalogue (~1,400
+  // carts) builds to ~490 MB; 850 MB leaves room to grow and still fails
+  // well before Pages would reject the upload. Past 650 MB is a warning.
+  distHard: 850 * 1024 * 1024,
+  distWarn: 650 * 1024 * 1024,
   listAbove: 1 * 1024 * 1024,
   initialJsGzip: 200 * 1024,
   lcpImage: 200 * 1024,
@@ -164,7 +168,9 @@ function main() {
     }
   }
   if (total > BUDGET.distHard) {
-    failures.push(`dist/ is ${human(total)}, over the 500 MB hard limit`);
+    failures.push(`dist/ is ${human(total)}, over the 850 MB hard limit`);
+  } else if (total > BUDGET.distWarn) {
+    warnings.push(`dist/ is ${human(total)}, over the 650 MB warning threshold (GitHub Pages caps a site at 1 GB)`);
   }
 
   /* --- verdict ---------------------------------------------------------- */
@@ -175,7 +181,8 @@ function main() {
 
   check("single file <= 100 MB (hard)", !files.some((f) => f.size > BUDGET.singleFileHard), `largest ${human(largest[0]?.size ?? 0)}`);
   check("single file <= 25 MB (warn)", !files.some((f) => f.size > BUDGET.singleFileWarn), `largest ${human(largest[0]?.size ?? 0)}`);
-  check("dist/ <= 500 MB (hard)", total <= BUDGET.distHard, human(total));
+  check("dist/ <= 850 MB (hard)", total <= BUDGET.distHard, human(total));
+  check("dist/ <= 650 MB (warn)", total <= BUDGET.distWarn, human(total));
   check("JS <= 200 KB gzipped", initialJs <= BUDGET.initialJsGzip, kb(initialJs));
 
   if (warnings.length) {

@@ -1,8 +1,9 @@
 name: CI
 
 # Runs on every pull request and on pushes to branches other than main.
-# Builds from the committed snapshot with no network fetch, so a PR is not
-# gated on the DMS being reachable.
+# Builds from the committed snapshot with no inventory fetch, so a PR is not
+# gated on the DMS or IOT being reachable. It does download each cart's primary
+# photo from TIGON's public S3 bucket, as the deploy does.
 on:
   pull_request:
   push:
@@ -37,6 +38,18 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
+      # Each cart's primary photo is optimized, as in the deploy: the browser
+      # tests and verify check that cards load local WebP, not S3 originals.
+      # Gallery photos are not optimized anywhere (they load from S3), so this
+      # is one download per cart. Cached like the deploy's image folder.
+      - name: Restore optimized image cache
+        uses: actions/cache@v4
+        with:
+          path: public/images/carts
+          key: ci-cart-images-${{ hashFiles('src/data/snapshot.json') }}
+          restore-keys: |
+            ci-cart-images-
+
       # The browser tests need a built dist/ to drive, so the build comes first
       # and the full suite runs after it.
       # A dummy webhook key so the lead forms render and the browser tests can
@@ -46,7 +59,7 @@ jobs:
           TIGON_WEBHOOK_KEY: ci-test-key
         run: |
           npm run generate-seo
-          node script/optimize-assets.ts --skip-carts
+          node script/optimize-assets.ts
           npx vite build
           npm run prerender
 

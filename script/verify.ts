@@ -230,7 +230,9 @@ function main() {
   const detailSample = htmlFiles.find((file) => file.startsWith("golfcart/"));
   const detailHtml = detailSample ? readFileSync(resolve(DIST, detailSample), "utf8") : "";
   record("vehicle detail hero is an optimized WebP srcset", /<img[^>]+images\/carts\/[^"]+-1200\.webp"[^>]*srcset=/.test(detailHtml), detailSample ?? "no detail page");
-  record("no original JPEG from S3 on the home page", !/s3\.amazonaws\.com/.test(home.replace(/<link rel="preconnect"[^>]*>/g, "")), "");
+  // Images only: the DMS chat plugin's <script> also loads from S3, legitimately.
+  const s3HomeImages = homeImgs.filter((tag) => /s3\.amazonaws\.com/.test(tag));
+  record("no original JPEG from S3 on the home page", s3HomeImages.length === 0, `${s3HomeImages.length} S3 <img> tags`);
 
   const allImgs: string[] = [];
   for (const file of htmlFiles) {
