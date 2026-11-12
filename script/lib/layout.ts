@@ -100,7 +100,10 @@ function header(path: string): string {
 <header class="site-header">
   <div class="wrap site-header__inner">
     <a class="brand" href="${esc(withBase("/"))}" aria-label="${esc(site.name)} home">
-      <img src="${esc(withBase("images/logo.svg"))}" alt="${esc(site.name)}" width="200" height="40" fetchpriority="high" decoding="async">
+      <picture>
+        <source srcset="${esc(withBase("images/logo-light.svg"))}" media="(prefers-color-scheme: dark)">
+        <img src="${esc(withBase("images/logo.svg"))}" alt="${esc(site.name)}" width="209" height="44" fetchpriority="high" decoding="async">
+      </picture>
     </a>
     <nav class="site-nav" aria-label="Main">
       <ul>
@@ -109,7 +112,7 @@ ${nav.map(link).map((item) => `        ${item}`).join("\n")}
     </nav>
     <div class="site-header__cta">
       <button class="btn btn--outline btn--quote" type="button" ${leadOpenAttrs()} data-testid="button-header-quote">Get a Quote</button>
-      <a class="btn btn--primary btn--call" href="${esc(site.phoneTel)}" data-testid="link-header-phone">
+      <a class="btn btn--primary btn--call" href="${esc(site.phoneTel)}" aria-label="Call ${esc(site.phone)}" data-testid="link-header-phone">
         <span class="btn__icon">${PHONE_ICON}</span>
         <span class="btn__label">${esc(site.phone)}</span>
       </a>
@@ -175,7 +178,7 @@ function footer(stores: Store[]): string {
   <div class="wrap">
     <div class="site-footer__grid">
       <div class="site-footer__brand">
-        <img src="${esc(withBase("images/logo-light.svg"))}" alt="${esc(site.name)}" width="200" height="40" loading="lazy" decoding="async">
+        <img src="${esc(withBase("images/logo-light.svg"))}" alt="${esc(site.name)}" width="209" height="44" loading="lazy" decoding="async">
         <p>${esc(site.shortDescription)}</p>
         <p class="site-footer__nap">
           <a class="site-footer__phone" href="${esc(site.phoneTel)}" data-testid="link-footer-phone">${esc(site.phone)}</a><br>
