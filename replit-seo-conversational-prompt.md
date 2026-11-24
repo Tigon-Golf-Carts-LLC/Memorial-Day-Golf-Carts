@@ -4,7 +4,7 @@ Copy everything below the line into Replit's agent. It works on any website: the
 
 ---
 
-You are working on this website's codebase. Your job: convert every indexable page into a conversational, answer-first format that serves both informational and purchase-intent searchers and is easy for Google Search and its AI Overviews/AI Mode to understand, retrieve and cite.
+You are working on this website's codebase. Your job: ADD conversational, answer-first content to every indexable page, on top of what is already there, so the site serves both informational and purchase-intent searchers and is easy for Google Search and its AI Overviews/AI Mode to understand, retrieve and cite.
 
 We are writing for three goals at once:
 
@@ -14,13 +14,39 @@ We are writing for three goals at once:
 
 Follow Google's own guidance: good content for people comes first. No "AEO/GEO hacks."
 
+## GOLDEN RULE: Add to what we have. Do not delete or replace it.
+
+This site already ranks. Protecting those rankings comes first. Everything in this prompt is an ADDITION to the existing pages, creating a good mix of the existing content plus new conversational, purchase-intent and product-authority content.
+
+**Never do any of these without my explicit approval for that specific change:**
+
+- Delete, unpublish, noindex, merge or redirect any page.
+- Change any URL or slug.
+- Change any existing page title (`<title>`), meta description, or H1.
+- Remove or reword existing body copy, headings, FAQ entries, image alt text, or internal links.
+- Remove or change existing structured data, canonicals, hreflang, robots rules or sitemap entries.
+- Shorten a page or move existing content below the fold in a way that hides it.
+
+**What you ARE allowed to do:**
+
+- Add a short answer-first summary block at the top of a page, ABOVE the existing intro. The existing intro stays, unchanged, right below it.
+- Add new question-based H2/H3 sections, FAQ entries, comparison tables, spec tables, "Related questions" blocks, and product information. Insert them between or after existing sections.
+- Add new internal links (existing links stay).
+- Add structured data that is missing, as long as it matches visible content and doesn't conflict with existing markup.
+- Add alt text to images that have none.
+- Fix clear factual errors or broken links, but list each one for me first.
+
+**If you believe an existing title, H1, section or page should change,** don't do it. Put it in a separate "Suggested changes (not applied)" list with the reason, the risk, and the exact before/after text, so I can decide.
+
 ## STEP 0: Discover the site before you write (no edits yet)
 
 1. **Figure out how the site is built:** framework or static generator, where page content lives (templates, components, Markdown, CMS data, config files, databases), how pages and URLs are generated, how titles/meta descriptions/structured data are set, and the build, test and preview commands.
 2. **Figure out what the site is about:** the business or publisher, its audience, its products or services, locations, and any real data the site already has (catalog, inventory, prices, specs, case studies, reviews, team bios).
 3. **List every indexable page and group them by page type** (e.g. home, pillar/category pages, product or service pages, location pages, blog/guide articles, FAQ, about, contact, listing/pagination pages, legal pages).
-
 4. **Tag each page type by its main search intent:** informational (learn), commercial investigation (compare, "best," "vs," reviews), transactional (buy, price, availability, quote), or local (near me, hours, directions).
+5. **Take a baseline snapshot before any edit.** For every indexable URL, save to a file (e.g. `seo-baseline.json` or `.csv`): URL, canonical, title, meta description, H1, all H2/H3 headings, word count, internal links, image alt text, and structured data types. This is what we protect, and what we compare against after every batch.
+6. **Ask me for my Search Console data** (top pages and top queries by clicks and impressions). Mark those pages as **PROTECTED**: on these pages, add content only below the existing first section and keep edits minimal.
+7. **Commit the current state to git** (or confirm it's committed) before any change, so every batch can be rolled back.
 
 Then give me a short **AUDIT TABLE**: page type | number of URLs | main intent | does it answer the core question in the first 1–2 sentences? | headings phrased as real questions? | thin or duplicate? | internal links in and out | proposed change.
 
@@ -30,9 +56,9 @@ Then give me a **PLAN** grouped by page type. **WAIT for my approval before bulk
 
 For each page, work out the ONE core question the searcher has and what they want: a quick definition, a comparison, step-by-step instructions, or a specific solution (buy, book, sign up, get a quote, find a location). Build the page around that need:
 
-1. **Title + H1 + first paragraph** include the main topic in plain language. The H1 can be the question itself or a clear statement of it.
-2. **Answer first.** The opening 1–3 sentences directly answer the core question with concrete specifics (price or price range, what's included, where, how long, who it's for). No backstory before the answer. If the site already has a summary or intro field, reuse and improve it. Don't build a second system.
-3. **Question-cluster sections.** Use H2s phrased the way people really ask. Cover the natural follow-up questions a visitor has next (the "fan-out"): cost, comparisons between options, how it works, how long it takes, requirements, eligibility, warranty or guarantees, delivery or availability, next steps. Under each H2:
+1. **Title + H1 + first paragraph:** keep the existing title and H1 exactly as they are. If the main topic is missing from them, add it to the new answer-first block, and list a suggested title/H1 change for my approval instead of applying it.
+2. **Answer first.** Add a new 1–3 sentence block at the top that directly answers the core question with concrete specifics (price or price range, what's included, where, how long, who it's for). The existing intro stays directly below it, unchanged. If the site already has an empty or missing summary/intro field, fill it in. If it has one with content, keep it and add the new block alongside it.
+3. **Question-cluster sections (new, added).** Add new H2s phrased the way people really ask, alongside the existing headings, which stay as they are. Cover the natural follow-up questions a visitor has next (the "fan-out"): cost, comparisons between options, how it works, how long it takes, requirements, eligibility, warranty or guarantees, delivery or availability, next steps. Under each H2:
    - First sentence = the direct answer.
    - Then short paragraphs, bullets, or a small comparison table for detail.
    - Use H3s for sub-questions.
@@ -94,7 +120,8 @@ Build hub-and-spoke clusters from the existing pages. Do NOT create a new page f
 - **Subtopic pages** answer one real question in depth and link back to the pillar and across to closely related pages.
 - **FAQ:** keep one central FAQ page, and on other pages show only the questions relevant to that page.
 - Add a "Related questions" block near the bottom of hub and article pages that links to the pages that answer them.
-- If two pages target the same intent, merge them (keep one canonical, redirect or canonicalize the other) instead of keeping thin duplicates.
+- If two pages target the same intent, do NOT merge, redirect or canonicalize them yourself. Make each page's distinct angle clearer by adding content, link them to each other, and list them in "Suggested changes (not applied)" for my decision.
+- Add new internal links. Never remove or change existing ones.
 - New pages are allowed ONLY where there is a real, distinct visitor question with no existing page AND I can add first-hand input. Propose them as a list. Don't create them unasked.
 
 > **Warning:** mass-producing near-duplicate pages for keyword or fan-out variations violates Google's scaled content abuse spam policy. Quality over quantity.
@@ -118,6 +145,8 @@ Build hub-and-spoke clusters from the existing pages. Do NOT create a new page f
 - **Structured data:** keep it accurate and matching visible content (e.g. Organization/LocalBusiness, Product/Offer, Article, BreadcrumbList; see STEP 2B for products). FAQPage markup may stay where real Q&A is visible, but don't expect FAQ rich results (Google limits them to authoritative government/health sites). Don't add schema just for AI. It isn't required.
 - **llms.txt and other "AI files":** not needed for Google Search, which ignores them. Leave any existing one as-is; don't create one just for Google.
 - **Don't change** canonicals, domain/base-path handling, business contact info sources, forms, analytics, or URL structure without my approval. Any URL change needs a redirect.
+- **The GOLDEN RULE applies everywhere:** no deleting or rewording existing titles, meta descriptions, H1s, body copy, headings, FAQ entries, alt text, internal links, structured data or pages.
+- **Shared templates/components:** when you edit a template used by many pages, add new blocks to it. Don't restructure or remove what it already outputs.
 - Only update last-modified dates when the content actually changes. No fake freshness.
 - Keep pages fast and mobile-friendly. Don't add heavy scripts or unoptimized images.
 - No hidden text, no doorway pages, no auto-generated filler paragraphs.
@@ -134,7 +163,13 @@ Order:
 6. About, contact, pricing and other content pages
 7. Product/service/item templates
 
-After each batch, run the project's own build, test and lint commands (and any SEO or link checks it has). Fix anything that fails. Then show me before/after for one example page of that type (H1, first paragraph, list of H2 questions).
+Start small: do the first batch on 2–3 pages only, show me, and continue only after I approve. Commit each batch separately in git so any batch can be rolled back on its own.
+
+After each batch:
+
+1. Run the project's own build, test and lint commands (and any SEO or link checks it has). Fix anything that fails.
+2. **Run a "nothing removed" check against the baseline snapshot.** For every URL: the URL, canonical, title, meta description and H1 are identical; every existing H2/H3, internal link, alt text and structured data type is still present; the word count went up or stayed the same. Write a script for this check and run it every batch. If anything was removed or changed, restore it before continuing.
+3. Show me before/after for one example page of that type: the H1, the new answer block and the existing intro below it, and the existing headings plus the new H2 questions (mark which are new).
 
 ## Final deliverables
 
@@ -143,6 +178,8 @@ After each batch, run the project's own build, test and lint commands (and any S
 3. A product-information gap report: for each product page type, which fields (price, availability, specs, identifiers, photos, shipping, returns, warranty, reviews) are present, missing, or need owner input.
 4. Every `[OWNER INPUT NEEDED]` placeholder, with the exact question I need to answer.
 5. Proposed new pages (if any), each with the distinct visitor question it answers.
-6. A post-launch checklist: request indexing for key pages in Google Search Console, confirm the site is included in generative AI features in Search Console, monitor the Generative AI performance report, and check pages with the URL Inspection tool to confirm the rendered HTML contains the content.
+6. The "nothing removed" report against the baseline: it should show zero removed or changed titles, meta descriptions, H1s, headings, links, alt text, structured data and URLs, and the word count change for each page.
+7. "Suggested changes (not applied)": anything you think should be changed or removed, with the reason, the risk and the exact before/after, for me to decide on.
+8. A post-launch checklist: request indexing for key pages in Google Search Console, confirm the site is included in generative AI features in Search Console, monitor the Generative AI performance report, and check pages with the URL Inspection tool to confirm the rendered HTML contains the content. Compare clicks, impressions and average position for the PROTECTED pages and top queries for 2–4 weeks after each batch goes live, before rolling out the next large batch. If a page drops, roll back that batch's commit for it.
 
 Self-check every page against two questions: **"Would a real visitor find this page satisfying and trustworthy?"** and, for purchase-intent pages, **"Does this page give a buyer everything they need to decide and act?"** If not, fix it before moving on.
