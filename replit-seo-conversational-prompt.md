@@ -4,7 +4,13 @@ Copy everything below the line into Replit's agent. It works on any website: the
 
 ---
 
-You are working on this website's codebase. Your job: convert every indexable page into a conversational, answer-first format that serves informational and high-intent searchers and is easy for Google Search and its AI Overviews/AI Mode to understand, retrieve and cite.
+You are working on this website's codebase. Your job: convert every indexable page into a conversational, answer-first format that serves both informational and purchase-intent searchers and is easy for Google Search and its AI Overviews/AI Mode to understand, retrieve and cite.
+
+We are writing for three goals at once:
+
+- **Informational intent:** answer the questions people ask while researching.
+- **Purchase intent:** help people who are ready to compare, choose and buy make a confident decision.
+- **Product information and product authority:** make this site the most complete, accurate and trustworthy source for the products or services it sells.
 
 Follow Google's own guidance: good content for people comes first. No "AEO/GEO hacks."
 
@@ -14,7 +20,9 @@ Follow Google's own guidance: good content for people comes first. No "AEO/GEO h
 2. **Figure out what the site is about:** the business or publisher, its audience, its products or services, locations, and any real data the site already has (catalog, inventory, prices, specs, case studies, reviews, team bios).
 3. **List every indexable page and group them by page type** (e.g. home, pillar/category pages, product or service pages, location pages, blog/guide articles, FAQ, about, contact, listing/pagination pages, legal pages).
 
-Then give me a short **AUDIT TABLE**: page type | number of URLs | does it answer the core question in the first 1–2 sentences? | headings phrased as real questions? | thin or duplicate? | internal links in and out | proposed change.
+4. **Tag each page type by its main search intent:** informational (learn), commercial investigation (compare, "best," "vs," reviews), transactional (buy, price, availability, quote), or local (near me, hours, directions).
+
+Then give me a short **AUDIT TABLE**: page type | number of URLs | main intent | does it answer the core question in the first 1–2 sentences? | headings phrased as real questions? | thin or duplicate? | internal links in and out | proposed change.
 
 Then give me a **PLAN** grouped by page type. **WAIT for my approval before bulk edits.**
 
@@ -42,6 +50,42 @@ Generic "7 tips for X" content adds nothing. Make each page something only this 
 - **Cite credible sources** for factual, legal, medical, financial, technical or regulatory claims: official regulations, government sites, manufacturers, standards bodies, peer-reviewed research. Use visible links with clear attribution.
 - **Images and video:** keep using real, relevant images. Give every image descriptive alt text. Add captions where they help. Suggest where original photos, diagrams or short videos would add value.
 
+## STEP 2B: Purchase intent, product information and product authority
+
+Purchase-intent searchers want to decide and act. Give them everything they need on the page, so they don't have to leave to find it.
+
+**Match the purchase questions people ask:**
+
+- "How much does X cost?" / "X price": show the real price or price range, what affects price, and what's included.
+- "X vs Y" / "which X should I buy": an honest side-by-side comparison table, with who each option is best for.
+- "Best X for [use case]": recommendations tied to a specific need, with the reason for each pick.
+- "Is X worth it?" / "X review": real pros AND cons, and who should NOT buy it.
+- "X for sale" / "buy X" / "X near me": in-stock availability, location, delivery or shipping, and a clear buy/quote/contact action.
+- "X financing / warranty / returns": the real terms, stated plainly.
+
+**Complete product information on every product page** (only from real data; hide any field that's missing, never guess):
+
+- Name, brand/manufacturer, model, variant (size, color, configuration)
+- Price, currency, availability (in stock, preorder, sold out), condition (new/used/refurbished)
+- Full specifications in a real `<table>` (dimensions, capacity, performance, materials, compatibility, etc.)
+- What's included in the box or the service
+- Shipping/delivery options, cost and timing; return policy; warranty terms
+- Identifiers where they exist (SKU, MPN, GTIN/UPC, VIN, model number)
+- Multiple real photos (different angles, in use, scale), with descriptive alt text; video where available
+- A clear primary call to action (buy, add to cart, get a quote, book, call)
+
+**Product authority (why trust this site about this product):**
+
+- Show first-hand expertise: hands-on use, testing, installation, servicing, or selling this product. Say how you know, and mark it `[OWNER INPUT NEEDED]` where only the owner can supply it.
+- Follow Google's guidance for high-quality product reviews: evaluate from a user's perspective, show evidence of real experience (original photos, measurements, test results), explain what sets the product apart from competitors, cover benefits and drawbacks, and compare to alternatives.
+- Explain the "why" behind recommendations, not just the "what."
+- Cite the manufacturer's official specs and any relevant standards, certifications or regulations.
+- Show real customer reviews and ratings only if they are genuine and already collected. Never write or paraphrase fake ones.
+- Name a real author or team on buying guides and reviews, with their relevant experience.
+- Link product pages to the buying guides, comparisons and FAQs that support them, and link those back to the products. Product authority comes from the whole cluster, not one page.
+
+**Structured data for products** (accurate and matching what's visible): `Product` with `Offer` (price, priceCurrency, availability, itemCondition, url), `brand`, identifiers (`sku`, `mpn`, `gtin`), `image`; `AggregateRating`/`Review` only for genuine reviews shown on the page; shipping and return-policy details where supported. If the business sells online, recommend keeping product data consistent with Google Merchant Center.
+
 ## STEP 3: Topical hubs and internal linking
 
 Build hub-and-spoke clusters from the existing pages. Do NOT create a new page for every query variation.
@@ -59,6 +103,7 @@ Build hub-and-spoke clusters from the existing pages. Do NOT create a new page f
 
 - **Home page:** answer-first "who you are, what you offer, who it's for, where" + question clusters + links into the main hubs.
 - **Product / service / item pages:** if there are many generated from data, avoid boilerplate. Lead with a 1–2 sentence summary generated from THAT item's real data. Add a short Q&A block generated ONLY from fields that exist for that item. Hide questions whose data is missing. Don't write fake answers.
+- **Comparison, "best X," buying guide and review pages:** commercial-investigation intent. Lead with the verdict (which to choose and for whom), then a comparison table, then the reasoning, pros/cons and evidence. Link every product mentioned to its product page.
 - **Category / listing / filter pages:** keep them lean. Add a short, data-driven answer intro on the first page only. Leave pagination pages as-is, with self-referencing canonicals.
 - **Location pages:** answer "where is it, hours, what's offered here, service area," using real location data.
 - **Articles / guides:** one core question per article, answered in the first lines, then the question cluster, with a clear author and real expertise shown.
@@ -70,7 +115,7 @@ Build hub-and-spoke clusters from the existing pages. Do NOT create a new page f
 
 - Main content must be in the HTML that search engines receive (server-rendered or prerendered), not injected only by client-side JavaScript. If the site is a client-only single-page app, flag it and propose a fix.
 - Use semantic HTML: one `<h1>`, logical `<h2>`/`<h3>`, `<main>`, `<article>`, `<section>`, `<nav>`, real `<table>` for comparisons. `<details>`/`<summary>` is fine for FAQ, but the answer text must be in the HTML.
-- **Structured data:** keep it accurate and matching visible content (e.g. Organization/LocalBusiness, Product/Offer, Article, BreadcrumbList). FAQPage markup may stay where real Q&A is visible, but don't expect FAQ rich results (Google limits them to authoritative government/health sites). Don't add schema just for AI. It isn't required.
+- **Structured data:** keep it accurate and matching visible content (e.g. Organization/LocalBusiness, Product/Offer, Article, BreadcrumbList; see STEP 2B for products). FAQPage markup may stay where real Q&A is visible, but don't expect FAQ rich results (Google limits them to authoritative government/health sites). Don't add schema just for AI. It isn't required.
 - **llms.txt and other "AI files":** not needed for Google Search, which ignores them. Leave any existing one as-is; don't create one just for Google.
 - **Don't change** canonicals, domain/base-path handling, business contact info sources, forms, analytics, or URL structure without my approval. Any URL change needs a redirect.
 - Only update last-modified dates when the content actually changes. No fake freshness.
@@ -94,9 +139,10 @@ After each batch, run the project's own build, test and lint commands (and any S
 ## Final deliverables
 
 1. Summary of every file changed and why.
-2. A table: page type | core question | answer-first sentence | H2 question cluster.
-3. Every `[OWNER INPUT NEEDED]` placeholder, with the exact question I need to answer.
-4. Proposed new pages (if any), each with the distinct visitor question it answers.
-5. A post-launch checklist: request indexing for key pages in Google Search Console, confirm the site is included in generative AI features in Search Console, monitor the Generative AI performance report, and check pages with the URL Inspection tool to confirm the rendered HTML contains the content.
+2. A table: page type | main intent | core question | answer-first sentence | H2 question cluster.
+3. A product-information gap report: for each product page type, which fields (price, availability, specs, identifiers, photos, shipping, returns, warranty, reviews) are present, missing, or need owner input.
+4. Every `[OWNER INPUT NEEDED]` placeholder, with the exact question I need to answer.
+5. Proposed new pages (if any), each with the distinct visitor question it answers.
+6. A post-launch checklist: request indexing for key pages in Google Search Console, confirm the site is included in generative AI features in Search Console, monitor the Generative AI performance report, and check pages with the URL Inspection tool to confirm the rendered HTML contains the content.
 
-Self-check every page against one question: **"Would a real visitor find this page satisfying and trustworthy?"** If not, fix it before moving on.
+Self-check every page against two questions: **"Would a real visitor find this page satisfying and trustworthy?"** and, for purchase-intent pages, **"Does this page give a buyer everything they need to decide and act?"** If not, fix it before moving on.
